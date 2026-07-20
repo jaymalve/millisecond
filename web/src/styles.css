@@ -1,0 +1,133 @@
+:root {
+  color-scheme: dark;
+  --bg: #0a0a0c;
+  --surface: #111113;
+  --border: #232326;
+  --text: #e6e6e8;
+  --text-muted: #8b8b93;
+  --accent: #5e6ad2;
+  --danger: #e5484d;
+  --radius: 8px;
+  --font-ui: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-ui);
+}
+
+.page {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 64px 20px;
+}
+
+.page__header h1 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin: 0 0 4px;
+  letter-spacing: -0.01em;
+}
+
+.page__header p {
+  margin: 0 0 32px;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.investigate-form {
+  display: flex;
+  gap: 8px;
+}
+
+.investigate-form input {
+  flex: 1;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+  font-family: var(--font-ui);
+  font-size: 0.9rem;
+  padding: 10px 12px;
+}
+
+.investigate-form input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.investigate-form button {
+  background: var(--accent);
+  border: none;
+  border-radius: var(--radius);
+  color: #fff;
+  font-size: 0.9rem;
+  font-weight: 500;
+  padding: 10px 16px;
+  cursor: pointer;
+}
+
+.investigate-form button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.page__output {
+  margin-top: 24px;
+}
+
+.report-view {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+.report-skeleton {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.report-skeleton__group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.skeleton {
+  background: linear-gradient(90deg, var(--border) 25%, #2a2a2e 50%, var(--border) 75%);
+  background-size: 200% 100%;
+  border-radius: 4px;
+  animation: shimmer 1.4s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+.error {
+  color: var(--danger);
+  font-size: 0.9rem;
+}

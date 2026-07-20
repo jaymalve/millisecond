@@ -1,0 +1,2 @@
+# target/ has no secrets of its own today — it only uses its D1 and KV
+# bindings, both configured in wrangler.toml.

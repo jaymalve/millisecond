@@ -1,0 +1,29 @@
+name = "millisecond-agent"
+main = "src/index.ts"
+compatibility_date = "2025-01-01"
+compatibility_flags = ["nodejs_compat"]
+
+[vars]
+TARGET_SCRIPT_NAME = "millisecond-target"
+GITHUB_OWNER = "REPLACE_WITH_GITHUB_OWNER"
+GITHUB_REPO = "REPLACE_WITH_GITHUB_REPO"
+
+# Same database_id as target/wrangler.toml — D1 databases can be bound
+# from more than one Worker. Used here both by the get-trace-spans tool
+# and as Mastra's own storage backend (see src/mastra/index.ts).
+[[d1_databases]]
+binding = "TARGET_DB"
+database_name = "millisecond-target-db"
+database_id = "REPLACE_AFTER_D1_CREATE"
+
+# Secrets (set with `wrangler secret put <NAME>`, or in .dev.vars locally):
+#   OPENAI_API_KEY     - required
+#   CF_API_TOKEN       - required, Account Analytics:Read scope
+#   CF_ACCOUNT_ID      - required
+#   BRAINTRUST_API_KEY - required, for agent observability
+#   GITHUB_TOKEN       - optional, only needed to raise GitHub API rate limits
+
+# Once millisecond.dev is added to this Cloudflare account's DNS, uncomment:
+# [[routes]]
+# pattern = "millisecond.dev/*"
+# custom_domain = true

@@ -1,0 +1,17 @@
+name = "millisecond-target"
+main = "src/index.ts"
+compatibility_date = "2025-01-01"
+compatibility_flags = ["nodejs_compat"]
+
+# Created with `wrangler d1 create millisecond-target-db`.
+# Replace database_id with the value that command prints, then run:
+#   npm run db:migrate:remote -w target
+[[d1_databases]]
+binding = "DB"
+database_name = "millisecond-target-db"
+database_id = "REPLACE_AFTER_D1_CREATE"
+
+# Created with `wrangler kv namespace create CACHE`.
+[[kv_namespaces]]
+binding = "CACHE"
+id = "REPLACE_AFTER_KV_CREATE"

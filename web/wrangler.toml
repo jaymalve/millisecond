@@ -1,0 +1,11 @@
+name = "millisecond-web"
+compatibility_date = "2025-01-01"
+
+[assets]
+directory = "dist"
+not_found_handling = "single-page-application"
+
+# Once millisecond.dev is added to this Cloudflare account's DNS, uncomment:
+# [[routes]]
+# pattern = "millisecond.dev/*"
+# custom_domain = true

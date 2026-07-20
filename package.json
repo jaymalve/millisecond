@@ -1,0 +1,19 @@
+{
+  "name": "millisecond-dev",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": [
+    "target",
+    "agent",
+    "web"
+  ],
+  "scripts": {
+    "dev:target": "bun run --filter target dev",
+    "dev:agent": "bun run --filter agent dev",
+    "dev:web": "bun run --filter web dev",
+    "deploy:target": "bun run --filter target deploy",
+    "deploy:agent": "bun run --filter agent deploy",
+    "deploy:web": "bun run --filter web deploy",
+    "typecheck": "bun run --filter target typecheck && bun run --filter agent typecheck && bun run --filter web typecheck"
+  }
+}
