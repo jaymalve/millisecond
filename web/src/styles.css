@@ -2,10 +2,13 @@
   color-scheme: dark;
   --bg: #0a0a0c;
   --surface: #111113;
+  --surface-raised: #17171a;
   --border: #232326;
   --text: #e6e6e8;
   --text-muted: #8b8b93;
+  --text-faint: #5c5c64;
   --accent: #5e6ad2;
+  --success: #4cc38a;
   --danger: #e5484d;
   --radius: 8px;
   --font-ui: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -83,32 +86,240 @@ body {
   margin-top: 24px;
 }
 
-.report-view {
+/* Transcript: a vertical stack of reasoning / tool-call / answer blocks, each its own row — the agentic-chat layout. */
+.transcript {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.reasoning-accordion {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.reasoning-accordion__toggle {
+  all: unset;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  color: var(--text-faint);
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+
+.reasoning-accordion__toggle:hover {
+  color: var(--text-muted);
+}
+
+.reasoning-accordion__label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.reasoning-accordion__chevron {
+  font-size: 1rem;
+  line-height: 1;
+  transition: transform 0.15s ease;
+}
+
+.reasoning-accordion__chevron--open {
+  transform: rotate(90deg);
+}
+
+.reasoning-block {
+  margin: 0;
+  padding: 0 4px;
+  color: var(--text-faint);
+  font-size: 0.82rem;
+  font-style: italic;
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+
+.answer-block {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   padding: 16px;
+  font-size: 0.88rem;
+  line-height: 1.65;
+}
+
+.answer-block > *:first-child {
+  margin-top: 0;
+}
+
+.answer-block > *:last-child {
+  margin-bottom: 0;
+}
+
+.answer-block p,
+.answer-block ul,
+.answer-block ol,
+.answer-block blockquote {
+  margin: 0 0 12px;
+}
+
+.answer-block ul,
+.answer-block ol {
+  padding-left: 1.3em;
+}
+
+.answer-block li {
+  margin-bottom: 4px;
+}
+
+.answer-block h1,
+.answer-block h2,
+.answer-block h3 {
+  font-size: 0.95rem;
+  font-weight: 600;
+  margin: 16px 0 8px;
+}
+
+.answer-block strong {
+  color: #fff;
+  font-weight: 600;
+}
+
+.answer-block a {
+  color: var(--accent);
+}
+
+.answer-block blockquote {
+  border-left: 2px solid var(--border);
+  padding-left: 10px;
+  color: var(--text-muted);
+}
+
+.inline-code {
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 1px 5px;
   font-family: var(--font-mono);
-  font-size: 0.85rem;
-  line-height: 1.6;
+  font-size: 0.85em;
+}
+
+/* Shiki injects its own background/color via inline styles on <pre> — override the container chrome, keep its per-token syntax colors. */
+.code-block {
+  margin: 0 0 12px;
+}
+
+.code-block pre,
+pre.code-block {
+  margin: 0;
+  padding: 10px 12px !important;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  line-height: 1.5;
+  overflow-x: auto;
+  background-color: var(--surface-raised) !important;
+}
+
+.code-block--loading {
+  color: var(--text-muted);
+}
+
+/* Tool call: a compact, collapsed-by-default chip that expands to show full args/result — modeled on Cursor's agent action rows. */
+.tool-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  overflow: hidden;
+}
+
+.tool-card__header {
+  all: unset;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 12px;
+  cursor: pointer;
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+}
+
+.tool-card__status {
+  width: 1em;
+  text-align: center;
+  color: var(--text-faint);
+}
+
+.tool-card--done .tool-card__status {
+  color: var(--success);
+}
+
+.tool-card--error .tool-card__status {
+  color: var(--danger);
+}
+
+.tool-card--running .tool-card__status {
+  animation: pulse 1.1s ease-in-out infinite;
+}
+
+.tool-card__name {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.tool-card__summary {
+  flex: 1;
+  min-width: 0;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tool-card__chevron {
+  color: var(--text-faint);
+}
+
+.tool-card__body {
+  border-top: 1px solid var(--border);
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.tool-card__label {
+  color: var(--text-faint);
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 4px;
+}
+
+.tool-card__body pre {
+  margin: 0;
+  background: var(--surface-raised);
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  line-height: 1.5;
   white-space: pre-wrap;
   word-wrap: break-word;
+  max-height: 260px;
+  overflow: auto;
 }
 
-.report-skeleton {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 16px;
+.thinking-indicator {
   display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.report-skeleton__group {
-  display: flex;
-  flex-direction: column;
+  align-items: center;
   gap: 8px;
+  color: var(--text-muted);
+  font-size: 0.85rem;
 }
 
 .skeleton {
@@ -124,6 +335,16 @@ body {
   }
   100% {
     background-position: -200% 0;
+  }
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.3;
   }
 }
 

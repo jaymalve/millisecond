@@ -1,31 +1,37 @@
 # web/
 
-React UI for millisecond.dev. Talks to `agent/`'s `/api/investigate` over
-HTTP, nothing else — no direct Cloudflare/OpenAI/GitHub access from the
-browser.
+React UI for millisecond.dev — a Cursor-style agentic chat transcript.
+Talks to `agent/`'s `POST /api/investigate` over HTTP (NDJSON stream),
+nothing else — no direct Cloudflare/OpenAI/GitHub access from the browser.
 
 ## Structure
 
 - `src/App.tsx` — page composition only.
-- `src/state.ts` — a single reducer for investigation state (`idle` /
-  `streaming` / `done` / `error` + accumulated steps). All state
-  transitions happen here, driven by explicit actions dispatched from
-  event handlers — not from `useEffect`.
-- `src/api.ts` — one function, `investigate(message, onChunk)`. Owns the
-  `fetch` + stream-reading loop. Nothing in here touches React.
+- `src/wireEvents.ts` — the `WireEvent` type the backend streams. Kept in
+  sync by hand with `agent/src/lib/wireEvents.ts` — no shared package
+  exists between the two yet.
+- `src/state.ts` — a single reducer building a `TranscriptItem[]` (
+  `reasoning` / `tool` / `answer` blocks) from incoming `WireEvent`s. All
+  state transitions happen here, driven by explicit actions dispatched
+  from event handlers — not from `useEffect`. Consecutive deltas with the
+  same `id` extend the last block; a new `id` starts a new one.
+- `src/api.ts` — one function, `investigate(message, onEvent)`. Owns the
+  `fetch` + NDJSON line-splitting loop. Nothing in here touches React.
 - `src/components/*.tsx` — one component per file, presentational only.
-  `Skeleton.tsx` is the one reusable primitive; everything else composes it.
+  `Transcript.tsx` maps `TranscriptItem`s to `ReasoningBlock` / `ToolCallCard`
+  / `AnswerBlock`. `Skeleton.tsx` is the one reusable shimmer primitive.
 
 ## Conventions specific to this package
 
 - State changes belong in the event handler that caused them (form
-  submit → dispatch `start`; stream chunk arrives → dispatch
-  `append-step`). If you find yourself writing a `useEffect` that watches
-  state to trigger more state, that's a sign the logic belongs in the
-  handler or reducer instead.
-- Skeleton loaders match the shape of what's coming: a step skeleton looks
-  like a step (icon + one line), not a generic gray box.
+  submit → dispatch `start`; a stream event arrives → dispatch `event`).
+  If you find yourself writing a `useEffect` that watches state to
+  trigger more state, that's a sign the logic belongs in the handler or
+  reducer instead.
+- `ToolCallCard`'s expand/collapse is local `useState` in the component,
+  not global state — it's pure presentation, not investigation state.
 - Aesthetic: dark background, thin 1px borders (no shadows), 6-8px
   radius, a single restrained accent color, system font stack for UI text
-  and a monospace stack for tool calls/output. Keep the spacing scale
-  tight and consistent — this is a developer tool, not a marketing page.
+  and a monospace stack for tool calls/reasoning/answers. Keep the
+  spacing scale tight and consistent — this is a developer tool, not a
+  marketing page.

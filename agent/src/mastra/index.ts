@@ -40,6 +40,13 @@ export function createMastra(env: Env): Mastra {
           exporters: [new BraintrustExporter({ braintrustLogger })],
         },
       },
+      // Observability auto-appends a SensitiveDataFilter that redacts any
+      // span field matching key/token/secret/auth-like names before it
+      // reaches Braintrust — plausible cause of tool call input/output
+      // not showing up there. Safe to disable: real secrets only ever
+      // live inside `env` and are read inside tool `execute` bodies, never
+      // passed as tool arguments or returned as tool results.
+      sensitiveDataFilter: false,
     }),
   });
 }

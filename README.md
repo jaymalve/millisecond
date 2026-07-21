@@ -26,16 +26,19 @@ Three Cloudflare Workers:
   request writes timing spans to a D1 table, which stands in for a
   distributed tracing backend.
 - **`agent/`** — the actual submission. A Mastra agent (`@mastra/core`),
-  exposed over Hono at `POST /api/investigate`, with six tools:
-  1. `getMetrics` — Cloudflare GraphQL Analytics API (latency/CPU/error
-     series for the target worker)
-  2. `findRegressionWindow` — deterministic changepoint detection over that
-     series (code, not LLM judgment)
-  3. `listDeploys` — commit history for `target/` via the GitHub API
-  4. `getDiff` — diff for a candidate commit
-  5. `getTraceSpans` — waterfall spans for a route/time-window from the
+  exposed over Hono at `POST /api/investigate`, with seven tools:
+  1. `getRouteMetrics` — per-route request count and P50/P99 wall-time,
+     bucketed in 5-minute windows, computed from the target's own D1 spans
+  2. `getMetrics` — Cloudflare GraphQL Analytics API (whole-worker,
+     hourly-only CPU/wall-time and request/error totals — used for cost
+     context, not route-specific investigation)
+  3. `findRegressionWindow` — deterministic changepoint detection over a
+     series from `getRouteMetrics`/`getMetrics` (code, not LLM judgment)
+  4. `listDeploys` — commit history for `target/` via the GitHub API
+  5. `getDiff` — diff for a candidate commit
+  6. `getTraceSpans` — waterfall spans for a route/time-window from the
      target's D1 table
-  6. `getCostEstimate` — CPU-ms/request delta priced against Workers pricing
+  7. `getCostEstimate` — CPU-ms/request delta priced against Workers pricing
 
   The agent gathers evidence across these tools, cross-references the diff
   against the waterfall change, and streams back a root cause with
