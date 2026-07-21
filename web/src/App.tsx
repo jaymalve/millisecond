@@ -27,8 +27,11 @@ export function App() {
       <InvestigateForm disabled={state.status === "streaming"} onSubmit={handleSubmit} />
 
       <section className="page__output">
-        {state.status !== "idle" && state.items.length === 0 && <ThinkingIndicator />}
         {state.status !== "idle" && <Transcript items={state.items} />}
+        {/* Shown for the whole streaming duration, not just before the first
+            item — a long reasoning phase behind a collapsed accordion
+            otherwise looks identical to the request being stuck. */}
+        {state.status === "streaming" && <ThinkingIndicator />}
         {state.status === "error" && <p className="error">{state.message}</p>}
       </section>
     </main>
