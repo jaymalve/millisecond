@@ -9,9 +9,9 @@ compatibility_flags = ["nodejs_compat"]
 [[d1_databases]]
 binding = "DB"
 database_name = "millisecond-target-db"
-database_id = "REPLACE_AFTER_D1_CREATE"
+database_id = "0b05b005-c1ee-4ebf-9616-9c72380e086c"
 
 # Created with `wrangler kv namespace create CACHE`.
 [[kv_namespaces]]
 binding = "CACHE"
-id = "REPLACE_AFTER_KV_CREATE"
+id = "d25e1dc6d03b44bfb30b659e8421e7f1"

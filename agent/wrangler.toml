@@ -14,14 +14,15 @@ GITHUB_REPO = "millisecond"
 [[d1_databases]]
 binding = "TARGET_DB"
 database_name = "millisecond-target-db"
-database_id = "REPLACE_AFTER_D1_CREATE"
+database_id = "0b05b005-c1ee-4ebf-9616-9c72380e086c"
 
 # Secrets (set with `wrangler secret put <NAME>`, or in .dev.vars locally):
-#   OPENAI_API_KEY     - required
-#   CF_API_TOKEN       - required, Account Analytics:Read scope
-#   CF_ACCOUNT_ID      - required
-#   BRAINTRUST_API_KEY - required, for agent observability
-#   GITHUB_TOKEN       - optional, only needed to raise GitHub API rate limits
+#   OPENAI_API_KEY       - required
+#   CF_API_TOKEN         - required, Account Analytics:Read scope
+#   CF_ACCOUNT_ID        - required
+#   BRAINTRUST_API_KEY   - required, for agent observability
+#   BRAINTRUST_PROJECT_ID - required, logs into this specific project by ID
+#   GITHUB_TOKEN         - optional, only needed to raise GitHub API rate limits
 
 # Once millisecond.dev is added to this Cloudflare account's DNS, uncomment:
 # [[routes]]

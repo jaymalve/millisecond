@@ -1,6 +1,6 @@
 import type { Context } from "hono";
 import type { Env } from "../env";
-import { mastra } from "../mastra";
+import { createMastra } from "../mastra";
 import { toReadableStream } from "../lib/stream";
 
 /**
@@ -17,6 +17,7 @@ export async function investigateRoute(c: Context<{ Bindings: Env }>) {
     return c.json({ error: "Missing 'message' in request body." }, 400);
   }
 
+  const mastra = createMastra(c.env);
   const agent = mastra.getAgentById("investigator");
   const stream = await agent.stream(message);
 

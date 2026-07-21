@@ -10,6 +10,7 @@ export interface Env {
   GITHUB_REPO: string;
   GITHUB_TOKEN?: string;
   BRAINTRUST_API_KEY: string;
+  BRAINTRUST_PROJECT_ID: string;
 }
 
 // `cloudflare:workers`'s `env` is populated by the runtime even when read
