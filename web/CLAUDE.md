@@ -20,6 +20,10 @@ nothing else — no direct Cloudflare/OpenAI/GitHub access from the browser.
 - `src/components/*.tsx` — one component per file, presentational only.
   `Transcript.tsx` maps `TranscriptItem`s to `ReasoningBlock` / `ToolCallCard`
   / `AnswerBlock`. `Skeleton.tsx` is the one reusable shimmer primitive.
+  `Sidebar.tsx` lists past investigations.
+- `src/lib/history.ts` — investigation history, persisted to
+  `localStorage` (no backend/auth, so it's per-device). Pure functions
+  only; `App.tsx` owns the actual `history`/`selectedId` React state.
 
 ## Conventions specific to this package
 
@@ -30,6 +34,11 @@ nothing else — no direct Cloudflare/OpenAI/GitHub access from the browser.
   reducer instead.
 - `ToolCallCard`'s expand/collapse is local `useState` in the component,
   not global state — it's pure presentation, not investigation state.
+- `App.tsx`'s `handleSubmit` calls `investigationReducer` directly (in
+  addition to `dispatch`) to capture the finished transcript for
+  persisting to history. This reuses the reducer as a plain pure
+  function rather than duplicating its event-handling logic — don't
+  "fix" this by writing a second copy of the switch statement.
 - Aesthetic: dark background, thin 1px borders (no shadows), 6-8px
   radius, a single restrained accent color, system font stack for UI text
   and a monospace stack for tool calls/reasoning/answers. Keep the

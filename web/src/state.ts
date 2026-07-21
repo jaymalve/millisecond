@@ -19,7 +19,7 @@ export type InvestigationState =
   | { status: "done"; items: TranscriptItem[] }
   | { status: "error"; items: TranscriptItem[]; message: string };
 
-export type InvestigationAction = { type: "start" } | { type: "event"; event: WireEvent };
+export type InvestigationAction = { type: "start" } | { type: "event"; event: WireEvent } | { type: "reset" };
 
 export const initialState: InvestigationState = { status: "idle" };
 
@@ -27,6 +27,9 @@ export function investigationReducer(
   state: InvestigationState,
   action: InvestigationAction,
 ): InvestigationState {
+  if (action.type === "reset") {
+    return initialState;
+  }
   if (action.type === "start") {
     return { status: "streaming", items: [] };
   }
