@@ -3,16 +3,21 @@ import { investigationReducer, initialState, type InvestigationState } from "./s
 import { investigate } from "./api";
 import type { WireEvent } from "./wireEvents";
 import { loadHistory, saveInvestigation, type InvestigationRecord } from "./lib/history";
+import { loadProjects, saveProjects, type Project } from "./lib/projects";
 import { InvestigateForm } from "./components/InvestigateForm";
 import { Transcript } from "./components/Transcript";
 import { ThinkingIndicator } from "./components/ThinkingIndicator";
 import { Sidebar } from "./components/Sidebar";
+import { AddProjectModal } from "./components/AddProjectModal";
 
 export function App() {
   const [state, dispatch] = useReducer(investigationReducer, initialState);
   // Lazy init reads localStorage once on first render — no useEffect needed
   // for what's otherwise just "load initial state."
   const [history, setHistory] = useState<InvestigationRecord[]>(() => loadHistory());
+  const [projects, setProjects] = useState<Project[]>(() => loadProjects());
+  const [activeProjectId, setActiveProjectId] = useState(() => projects[0]?.id ?? "target");
+  const [showAddProject, setShowAddProject] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const outputRef = useRef<HTMLDivElement>(null);
 
@@ -53,6 +58,7 @@ export function App() {
     if (local.status === "done" || local.status === "error") {
       const record: InvestigationRecord = {
         id: crypto.randomUUID(),
+        projectId: activeProjectId,
         question,
         items: local.items,
         status: local.status,
@@ -68,9 +74,23 @@ export function App() {
     dispatch({ type: "reset" });
   }
 
+  function handleAddProject(project: Project) {
+    setProjects((prev) => {
+      const next = [...prev, project];
+      saveProjects(next);
+      return next;
+    });
+    setActiveProjectId(project.id);
+    setShowAddProject(false);
+  }
+
   return (
     <div className="layout">
       <Sidebar
+        projects={projects}
+        activeProjectId={activeProjectId}
+        onSelectProject={setActiveProjectId}
+        onAddProjectClick={() => setShowAddProject(true)}
         history={history}
         selectedId={selectedId}
         disabled={isStreaming}
@@ -93,6 +113,8 @@ export function App() {
           <InvestigateForm disabled={isStreaming} onSubmit={handleSubmit} />
         </div>
       </main>
+
+      {showAddProject && <AddProjectModal onAdd={handleAddProject} onClose={() => setShowAddProject(false)} />}
     </div>
   );
 }

@@ -2,6 +2,7 @@ import type { TranscriptItem } from "../state";
 
 export interface InvestigationRecord {
   id: string;
+  projectId: string;
   question: string;
   items: TranscriptItem[];
   status: "done" | "error";
@@ -17,7 +18,10 @@ export function loadHistory(): InvestigationRecord[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     const parsed = raw ? JSON.parse(raw) : [];
-    return Array.isArray(parsed) ? parsed : [];
+    if (!Array.isArray(parsed)) return [];
+    // Records saved before projects existed have no projectId — backfill
+    // them into "target" (the only project that existed at the time).
+    return parsed.map((r) => ({ ...r, projectId: r.projectId ?? "target" }));
   } catch {
     return [];
   }

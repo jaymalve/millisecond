@@ -13,7 +13,7 @@ function splitTitle(text: string): { label: string; body: string } {
 }
 
 export function ReasoningBlock({ text }: { text: string }) {
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useState(true);
   const { label, body } = splitTitle(text);
 
   return (

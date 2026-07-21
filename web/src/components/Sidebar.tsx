@@ -1,7 +1,12 @@
 import type { InvestigationRecord } from "../lib/history";
 import { formatRelativeTime } from "../lib/history";
+import type { Project } from "../lib/projects";
 
 interface SidebarProps {
+  projects: Project[];
+  activeProjectId: string;
+  onSelectProject: (id: string) => void;
+  onAddProjectClick: () => void;
   history: InvestigationRecord[];
   selectedId: string | null;
   disabled: boolean;
@@ -9,25 +14,68 @@ interface SidebarProps {
   onNew: () => void;
 }
 
-export function Sidebar({ history, selectedId, disabled, onSelect, onNew }: SidebarProps) {
+export function Sidebar({
+  projects,
+  activeProjectId,
+  onSelectProject,
+  onAddProjectClick,
+  history,
+  selectedId,
+  disabled,
+  onSelect,
+  onNew,
+}: SidebarProps) {
   return (
     <nav className="sidebar">
       <button className="sidebar__new" onClick={onNew} disabled={disabled}>
         + New investigation
       </button>
-      <div className="sidebar__list">
-        {history.length === 0 && <p className="sidebar__empty">No investigations yet</p>}
-        {history.map((record) => (
+
+      <div className="sidebar__section">
+        <div className="sidebar__section-header">
+          <span>Projects</span>
+          <button className="sidebar__add" onClick={onAddProjectClick} title="Add project">
+            +
+          </button>
+        </div>
+        {projects.map((project) => (
           <button
-            key={record.id}
-            className={`sidebar__item ${record.id === selectedId ? "sidebar__item--active" : ""}`}
-            onClick={() => onSelect(record.id)}
-            disabled={disabled}
+            key={project.id}
+            className={`sidebar__project ${project.id === activeProjectId ? "sidebar__project--active" : ""}`}
+            onClick={() => onSelectProject(project.id)}
           >
-            <span className="sidebar__item-question">{record.question}</span>
-            <span className="sidebar__item-time">{formatRelativeTime(record.createdAt)}</span>
+            {project.name}
           </button>
         ))}
+      </div>
+
+      <div className="sidebar__section sidebar__section--grow">
+        <div className="sidebar__section-header">
+          <span>History</span>
+        </div>
+        <div className="sidebar__list">
+          {history.length === 0 && <p className="sidebar__empty">No investigations yet</p>}
+          {projects.map((project) => {
+            const projectHistory = history.filter((r) => r.projectId === project.id);
+            if (projectHistory.length === 0) return null;
+            return (
+              <div key={project.id} className="sidebar__group">
+                {projects.length > 1 && <div className="sidebar__group-label">{project.name}</div>}
+                {projectHistory.map((record) => (
+                  <button
+                    key={record.id}
+                    className={`sidebar__item ${record.id === selectedId ? "sidebar__item--active" : ""}`}
+                    onClick={() => onSelect(record.id)}
+                    disabled={disabled}
+                  >
+                    <span className="sidebar__item-question">{record.question}</span>
+                    <span className="sidebar__item-time">{formatRelativeTime(record.createdAt)}</span>
+                  </button>
+                ))}
+              </div>
+            );
+          })}
+        </div>
       </div>
     </nav>
   );
