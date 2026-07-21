@@ -6,10 +6,10 @@ const MetricPointSchema = z.object({
   datetimeHour: z.string(),
   requests: z.number(),
   errors: z.number(),
-  cpuTimeP50: z.number(),
-  cpuTimeP99: z.number(),
-  wallTimeP50: z.number(),
-  wallTimeP99: z.number(),
+  cpuTimeP50Ms: z.number(),
+  cpuTimeP99Ms: z.number(),
+  wallTimeP50Ms: z.number(),
+  wallTimeP99Ms: z.number(),
 });
 
 /**
@@ -17,11 +17,17 @@ const MetricPointSchema = z.object({
  * as of early 2025 — verify against Cloudflare's schema explorer
  * (https://developers.cloudflare.com/analytics/graphql-api/) if this
  * starts erroring; the dataset shape has changed before.
+ *
+ * Cloudflare returns cpuTime/wallTime quantiles in microseconds, not
+ * milliseconds — confirmed against a live query where wallTimeP50 came
+ * back as 180460 for a route that actually takes ~180ms. Converted to ms
+ * here so every downstream consumer (regression detection, cost
+ * estimates, the agent's own reasoning) works in one consistent unit.
  */
 export const getMetricsTool = createTool({
   id: "get-metrics",
   description:
-    "Fetch hourly request count, error count, and CPU/wall-time quantiles for the target worker between two ISO timestamps.",
+    "Fetch hourly request count, error count, and CPU/wall-time quantiles (in milliseconds) for the target worker between two ISO timestamps.",
   inputSchema: z.object({
     since: z.string().describe("ISO 8601 start time"),
     until: z.string().describe("ISO 8601 end time"),
@@ -77,10 +83,10 @@ export const getMetricsTool = createTool({
       datetimeHour: r.dimensions.datetimeHour,
       requests: r.sum.requests,
       errors: r.sum.errors,
-      cpuTimeP50: r.quantiles.cpuTimeP50,
-      cpuTimeP99: r.quantiles.cpuTimeP99,
-      wallTimeP50: r.quantiles.wallTimeP50,
-      wallTimeP99: r.quantiles.wallTimeP99,
+      cpuTimeP50Ms: r.quantiles.cpuTimeP50 / 1000,
+      cpuTimeP99Ms: r.quantiles.cpuTimeP99 / 1000,
+      wallTimeP50Ms: r.quantiles.wallTimeP50 / 1000,
+      wallTimeP99Ms: r.quantiles.wallTimeP99 / 1000,
     }));
   },
 });
