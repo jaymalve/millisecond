@@ -58,6 +58,14 @@ Every package deploys to Cloudflare Workers.
     `agent.stream()` (which wraps AI SDK's `streamText`) end-to-end: HTTP
     response streams to the client, and the UI renders incrementally,
     whenever the agent is producing a final answer.
+14. **Every architectural component or decision gets a file in
+    `architecture/`.** One topic per file, kebab-case name
+    (`two-worker-split.md`, not a section buried in a longer doc), linked
+    from `architecture/README.md`. This is not optional documentation —
+    if a future reader would need to understand *why* something is built
+    the way it is (a data flow, a schema, a non-obvious tradeoff, a bug
+    that shaped the design), that reasoning belongs in `architecture/`,
+    not only in a commit message or a code comment.
 
 ## Repo-wide conventions
 
