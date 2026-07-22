@@ -19,7 +19,9 @@ score(split) = |mean(right) - mean(left)| / pooledStd(left, right)
 
 Selects the split with the maximum score. Flags a regression only if:
 - `mean(right) > mean(left)` — slower, not faster
-- `score >= 1.5` — hardcoded threshold (`regression.ts:61`)
+- `score >= 1.5` — hardcoded threshold (`regression.ts:61`); see
+  [regression-score-interpretation.md](regression-score-interpretation.md)
+  for what this number means and why it's set here
 
 Level-shift detection has a closed-form statistical answer. An LLM adds
 cost and unreliability here with no accuracy benefit.

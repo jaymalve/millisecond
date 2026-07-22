@@ -17,5 +17,11 @@ per-package conventions.
 - [watchdog-regression-detection.md](watchdog-regression-detection.md) —
   the cron-triggered, LLM-free cheap tier that decides when the
   expensive tier (a full agent investigation) is worth running.
+- [regression-score-interpretation.md](regression-score-interpretation.md) —
+  what the changepoint score actually measures (an effect size, not a
+  p-value) and why the alert thresholds sit where they do.
+- [post-deploy-triggers.md](post-deploy-triggers.md) — design for a
+  CI-triggered regression check tied to a specific deploy SHA, reusing
+  the watchdog's two-tier detection. Not yet implemented.
 - [debug.md](debug.md) — three bugs found only by deploying and
   exercising the real system.
