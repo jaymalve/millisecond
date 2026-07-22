@@ -7,6 +7,10 @@ package-specific detail:
 - [`agent/`](agent/CLAUDE.md) — the Mastra-based investigation agent (API, deployed as a Cloudflare Worker)
 - [`web/`](web/CLAUDE.md) — the React UI, talks to `agent/` over HTTP
 
+For how the system actually works end-to-end (data flow, schema,
+gotchas) rather than package-level conventions, see
+[`architecture/`](architecture/README.md).
+
 Package manager: **bun** (`bun install`, `bun run --filter <pkg> <script>`).
 Every package deploys to Cloudflare Workers.
 
