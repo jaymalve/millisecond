@@ -5,11 +5,14 @@ import type { WireEvent } from "./wireEvents";
 import { loadHistory, saveInvestigation, type InvestigationRecord } from "./lib/history";
 import { loadProjects, saveProjects, type Project } from "./lib/projects";
 import { fetchAlerts, fetchAlert, type AlertSummary, type AlertDetail } from "./lib/alerts";
+import { fetchDeploys, fetchDeploy, type DeploySummary, type DeployDetail } from "./lib/deploys";
 import { InvestigateForm } from "./components/InvestigateForm";
 import { Transcript } from "./components/Transcript";
 import { ThinkingIndicator } from "./components/ThinkingIndicator";
 import { Sidebar } from "./components/Sidebar";
 import { AddProjectModal } from "./components/AddProjectModal";
+import { DeployChecks } from "./components/DeployChecks";
+import { DeployChecksSkeleton } from "./components/DeployChecksSkeleton";
 
 export function App() {
   const [state, dispatch] = useReducer(investigationReducer, initialState);
@@ -23,6 +26,11 @@ export function App() {
   const [alerts, setAlerts] = useState<AlertSummary[]>([]);
   const [selectedAlertId, setSelectedAlertId] = useState<string | null>(null);
   const [selectedAlertItems, setSelectedAlertItems] = useState<TranscriptItem[] | null>(null);
+  const [deploys, setDeploys] = useState<DeploySummary[]>([]);
+  const [deploysLoading, setDeploysLoading] = useState(true);
+  const [selectedDeploySha, setSelectedDeploySha] = useState<string | null>(null);
+  const [selectedDeployDetail, setSelectedDeployDetail] = useState<DeployDetail | null>(null);
+  const [selectedDeployError, setSelectedDeployError] = useState<string | null>(null);
   const outputRef = useRef<HTMLDivElement>(null);
 
   const isStreaming = state.status === "streaming";
@@ -39,6 +47,12 @@ export function App() {
       .catch(() => {
         /* Alerts are a nice-to-have surface, not worth blocking the rest of the app over. */
       });
+    fetchDeploys()
+      .then(setDeploys)
+      .catch(() => {
+        /* Same as alerts above — not worth blocking the rest of the app over. */
+      })
+      .finally(() => setDeploysLoading(false));
   }, []);
 
   // The transcript is now a fixed-height internal scroll pane (not a
@@ -53,6 +67,9 @@ export function App() {
     setSelectedId(null);
     setSelectedAlertId(null);
     setSelectedAlertItems(null);
+    setSelectedDeploySha(null);
+    setSelectedDeployDetail(null);
+    setSelectedDeployError(null);
     dispatch({ type: "start" });
 
     // Mirrors the reducer's own logic to capture the final transcript for
@@ -90,12 +107,18 @@ export function App() {
     setSelectedId(null);
     setSelectedAlertId(null);
     setSelectedAlertItems(null);
+    setSelectedDeploySha(null);
+    setSelectedDeployDetail(null);
+    setSelectedDeployError(null);
     dispatch({ type: "reset" });
   }
 
   function handleSelectHistory(id: string) {
     setSelectedAlertId(null);
     setSelectedAlertItems(null);
+    setSelectedDeploySha(null);
+    setSelectedDeployDetail(null);
+    setSelectedDeployError(null);
     setSelectedId(id);
   }
 
@@ -103,11 +126,30 @@ export function App() {
     setSelectedId(null);
     setSelectedAlertId(id);
     setSelectedAlertItems(null);
+    setSelectedDeploySha(null);
+    setSelectedDeployDetail(null);
+    setSelectedDeployError(null);
     try {
       const detail: AlertDetail = await fetchAlert(id);
       setSelectedAlertItems(detail.transcript);
     } catch {
       setSelectedAlertItems([]);
+    }
+  }
+
+  async function handleSelectDeploy(sha: string) {
+    setSelectedId(null);
+    setSelectedAlertId(null);
+    setSelectedAlertItems(null);
+    setSelectedDeploySha(sha);
+    setSelectedDeployDetail(null);
+    setSelectedDeployError(null);
+    const el = outputRef.current;
+    if (el) el.scrollTo({ top: 0 });
+    try {
+      setSelectedDeployDetail(await fetchDeploy(sha));
+    } catch (err) {
+      setSelectedDeployError((err as Error).message);
     }
   }
 
@@ -131,6 +173,10 @@ export function App() {
         alerts={alerts}
         selectedAlertId={selectedAlertId}
         onSelectAlert={handleSelectAlert}
+        deploys={deploys}
+        deploysLoading={deploysLoading}
+        selectedDeploySha={selectedDeploySha}
+        onSelectDeploy={handleSelectDeploy}
         history={history}
         selectedId={selectedId}
         disabled={isStreaming}
@@ -144,9 +190,21 @@ export function App() {
         </header>
 
         <section className="page__output" ref={outputRef}>
-          {displayItems.length > 0 && <Transcript items={displayItems} />}
-          {isStreaming && !selectedRecord && !selectedAlertId && <ThinkingIndicator />}
-          {displayError && <p className="error">{displayError}</p>}
+          {selectedDeploySha ? (
+            selectedDeployError ? (
+              <p className="error">{selectedDeployError}</p>
+            ) : selectedDeployDetail ? (
+              <DeployChecks deploy={selectedDeployDetail} onViewAlert={handleSelectAlert} />
+            ) : (
+              <DeployChecksSkeleton />
+            )
+          ) : (
+            <>
+              {displayItems.length > 0 && <Transcript items={displayItems} />}
+              {isStreaming && !selectedRecord && !selectedAlertId && <ThinkingIndicator />}
+              {displayError && <p className="error">{displayError}</p>}
+            </>
+          )}
         </section>
 
         <div className="page__composer">

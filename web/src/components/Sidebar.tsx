@@ -2,6 +2,10 @@ import type { InvestigationRecord } from "../lib/history";
 import { formatRelativeTime } from "../lib/history";
 import type { Project } from "../lib/projects";
 import type { AlertSummary } from "../lib/alerts";
+import { getDeployStatus, type DeploySummary } from "../lib/deploys";
+import { Skeleton } from "./Skeleton";
+
+const DEPLOY_STATUS_ICON = { pending: "○", clean: "✓", regressed: "⚠" } as const;
 
 interface SidebarProps {
   projects: Project[];
@@ -11,6 +15,10 @@ interface SidebarProps {
   alerts: AlertSummary[];
   selectedAlertId: string | null;
   onSelectAlert: (id: string) => void;
+  deploys: DeploySummary[];
+  deploysLoading: boolean;
+  selectedDeploySha: string | null;
+  onSelectDeploy: (sha: string) => void;
   history: InvestigationRecord[];
   selectedId: string | null;
   disabled: boolean;
@@ -26,6 +34,10 @@ export function Sidebar({
   alerts,
   selectedAlertId,
   onSelectAlert,
+  deploys,
+  deploysLoading,
+  selectedDeploySha,
+  onSelectDeploy,
   history,
   selectedId,
   disabled,
@@ -73,6 +85,43 @@ export function Sidebar({
               <span className="sidebar__item-time">{formatRelativeTime(alert.detectedAt)}</span>
             </button>
           ))}
+        </div>
+      </div>
+
+      <div className="sidebar__section">
+        <div className="sidebar__section-header">
+          <span>Deploys</span>
+        </div>
+        <div className="sidebar__list">
+          {deploysLoading && (
+            <>
+              <div className="sidebar__item">
+                <Skeleton width="70%" />
+              </div>
+              <div className="sidebar__item">
+                <Skeleton width="55%" />
+              </div>
+            </>
+          )}
+          {!deploysLoading && deploys.length === 0 && <p className="sidebar__empty">No deploys</p>}
+          {!deploysLoading &&
+            deploys.map((deploy) => {
+              const status = getDeployStatus(deploy);
+              return (
+                <button
+                  key={deploy.sha}
+                  className={`sidebar__item ${deploy.sha === selectedDeploySha ? "sidebar__item--active" : ""}`}
+                  onClick={() => onSelectDeploy(deploy.sha)}
+                  disabled={disabled}
+                >
+                  <span className="sidebar__item-question">
+                    <span className={`deploy-status deploy-status--${status}`}>{DEPLOY_STATUS_ICON[status]}</span>{" "}
+                    {deploy.sha.slice(0, 7)}
+                  </span>
+                  <span className="sidebar__item-time">{formatRelativeTime(deploy.deployedAt)}</span>
+                </button>
+              );
+            })}
         </div>
       </div>
 

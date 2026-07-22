@@ -230,7 +230,8 @@ body {
 
 .page__output > .transcript,
 .page__output > .thinking-indicator,
-.page__output > .error {
+.page__output > .error,
+.page__output > .deploy-checks {
   max-width: 760px;
   margin: 0 auto;
   padding: 24px 32px;
@@ -641,4 +642,115 @@ pre.code-block {
   font-size: 0.85rem;
   padding: 8px 14px;
   cursor: pointer;
+}
+
+/* Deploy status glyph — shared between the Sidebar row and the per-route rows in DeployChecks. */
+.deploy-status--pending {
+  color: var(--text-faint);
+}
+
+.deploy-status--clean {
+  color: var(--success);
+}
+
+.deploy-status--regressed {
+  color: var(--danger);
+}
+
+.deploy-checks {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.deploy-checks__header {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.deploy-checks__header h2 {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.deploy-checks__time {
+  color: var(--text-faint);
+  font-size: 0.8rem;
+}
+
+.deploy-checks__empty {
+  color: var(--text-muted);
+  font-size: 0.88rem;
+  margin: 0;
+}
+
+.deploy-checks__list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.deploy-check {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.deploy-check__row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.deploy-check__status {
+  width: 1em;
+  text-align: center;
+}
+
+.deploy-check--clean .deploy-check__status {
+  color: var(--success);
+}
+
+.deploy-check--regressed .deploy-check__status {
+  color: var(--danger);
+}
+
+.deploy-check__route {
+  flex: 1;
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  color: var(--text);
+}
+
+.deploy-check__time {
+  color: var(--text-faint);
+  font-size: 0.75rem;
+}
+
+.deploy-check__baseline {
+  margin: 0;
+  padding-left: 22px;
+  color: var(--text-faint);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+}
+
+.deploy-check__alert-link {
+  all: unset;
+  align-self: flex-start;
+  padding-left: 22px;
+  color: var(--accent);
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.deploy-check__alert-link:hover {
+  text-decoration: underline;
 }
