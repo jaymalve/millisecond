@@ -12,6 +12,14 @@ const RegressionWindowSchema = z.object({
 export type RegressionWindow = z.infer<typeof RegressionWindowSchema>;
 
 /**
+ * The cron watchdog's threshold since inception — see
+ * architecture/regression-score-interpretation.md for what this number
+ * means and why it's calibrated here rather than at the textbook
+ * "large effect" value of 0.8.
+ */
+export const DEFAULT_REGRESSION_THRESHOLD = 1.5;
+
+/**
  * Deterministic changepoint detection, not delegated to the LLM: for each
  * split point, compares the mean of the left/right segments and picks the
  * split with the largest standardized jump. Level-shift detection is a
@@ -20,7 +28,11 @@ export type RegressionWindow = z.infer<typeof RegressionWindowSchema>;
  * Exported as a plain function so the watchdog's cheap check can call it
  * directly without going through an LLM turn.
  */
-export function findRegressionWindow(values: number[], labels: string[]): RegressionWindow | null {
+export function findRegressionWindow(
+  values: number[],
+  labels: string[],
+  threshold: number = DEFAULT_REGRESSION_THRESHOLD,
+): RegressionWindow | null {
   if (values.length < 4 || values.length !== labels.length) return null;
 
   let best: RegressionWindow | null = null;
@@ -48,7 +60,7 @@ export function findRegressionWindow(values: number[], labels: string[]): Regres
   }
 
   // Require a real, not noise-level, shift before calling it a regression.
-  if (!best || bestScore < 1.5) return null;
+  if (!best || bestScore < threshold) return null;
   return best;
 }
 
