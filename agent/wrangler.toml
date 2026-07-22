@@ -37,6 +37,9 @@ class_name = "PostDeployCheckWorkflow"
 #   BRAINTRUST_API_KEY   - required, for agent observability
 #   BRAINTRUST_PROJECT_ID - required, logs into this specific project by ID
 #   GITHUB_TOKEN         - optional, only needed to raise GitHub API rate limits
+#   DEPLOY_WEBHOOK_SECRET - required, shared secret CI sends as a Bearer
+#                           token to POST /api/deploys (see
+#                           architecture/post-deploy-triggers.md)
 
 # Once millisecond.dev is added to this Cloudflare account's DNS, uncomment:
 # [[routes]]

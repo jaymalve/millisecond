@@ -12,6 +12,7 @@ export interface Env {
   GITHUB_TOKEN?: string;
   BRAINTRUST_API_KEY: string;
   BRAINTRUST_PROJECT_ID: string;
+  DEPLOY_WEBHOOK_SECRET: string;
   POST_DEPLOY_CHECK: Workflow<PostDeployCheckParams>;
 }
 
