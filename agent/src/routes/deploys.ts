@@ -87,3 +87,81 @@ export async function createDeployCheckRoute(c: Context<{ Bindings: Env }>) {
 
   return c.json({ sha, workflowInstanceId }, 202);
 }
+
+interface DeploySummaryRow {
+  sha: string;
+  deployed_at: number;
+  routes_checked: number;
+  regressions_detected: number;
+}
+
+/**
+ * One row per deploy, not per check — deploy_checks is (deploy, route)
+ * grained, so a flat list (the shape alerts.ts uses) would show several
+ * rows per deploy with no way to tell they're the same deploy. This
+ * rolls them up instead. `routesChecked: 0` means the check is still
+ * pending (the Workflow instance is asleep through its warmup window, or
+ * hasn't been created yet).
+ */
+export async function listDeploysRoute(c: Context<{ Bindings: Env }>) {
+  const { results } = await c.env.TARGET_DB.prepare(
+    `SELECT d.sha, d.deployed_at,
+            COUNT(dc.id) AS routes_checked,
+            COALESCE(SUM(dc.regression_detected), 0) AS regressions_detected
+     FROM deploys d
+     LEFT JOIN deploy_checks dc ON dc.sha = d.sha
+     GROUP BY d.sha, d.deployed_at
+     ORDER BY d.deployed_at DESC
+     LIMIT 50`,
+  ).all<DeploySummaryRow>();
+
+  return c.json(
+    (results ?? []).map((r) => ({
+      sha: r.sha,
+      deployedAt: r.deployed_at,
+      routesChecked: r.routes_checked,
+      regressionsDetected: r.regressions_detected,
+    })),
+  );
+}
+
+interface DeployCheckRow {
+  id: string;
+  route: string;
+  checked_at: number;
+  regression_detected: number;
+  changepoint_label: string | null;
+  baseline_sha: string | null;
+  alert_id: string | null;
+}
+
+/** Full per-route breakdown for one deploy. `alertId` (when set) is the join to GET /api/alerts/:id. */
+export async function getDeployRoute(c: Context<{ Bindings: Env }>) {
+  const sha = c.req.param("sha");
+  const deploy = await c.env.TARGET_DB.prepare(`SELECT sha, deployed_at FROM deploys WHERE sha = ?`)
+    .bind(sha)
+    .first<{ sha: string; deployed_at: number }>();
+
+  if (!deploy) return c.json({ error: "Not found" }, 404);
+
+  const { results } = await c.env.TARGET_DB.prepare(
+    `SELECT id, route, checked_at, regression_detected, changepoint_label, baseline_sha, alert_id
+     FROM deploy_checks WHERE sha = ? ORDER BY route ASC`,
+  )
+    .bind(sha)
+    .all<DeployCheckRow>();
+
+  return c.json({
+    sha: deploy.sha,
+    deployedAt: deploy.deployed_at,
+    checks: (results ?? []).map((r) => ({
+      id: r.id,
+      route: r.route,
+      checkedAt: r.checked_at,
+      regressionDetected: Boolean(r.regression_detected),
+      changepointLabel: r.changepoint_label,
+      baselineSha: r.baseline_sha,
+      alertId: r.alert_id,
+    })),
+  });
+}

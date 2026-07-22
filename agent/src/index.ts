@@ -3,7 +3,7 @@ import { cors } from "hono/cors";
 import type { Env } from "./env";
 import { investigateRoute } from "./routes/investigate";
 import { listAlertsRoute, getAlertRoute } from "./routes/alerts";
-import { createDeployCheckRoute } from "./routes/deploys";
+import { createDeployCheckRoute, listDeploysRoute, getDeployRoute } from "./routes/deploys";
 import { runWatchdogCheck } from "./watchdog/runWatchdogCheck";
 
 // Wrangler resolves [[workflows]]'s class_name against a named export of
@@ -19,6 +19,8 @@ app.post("/api/investigate", investigateRoute);
 app.get("/api/alerts", listAlertsRoute);
 app.get("/api/alerts/:id", getAlertRoute);
 app.post("/api/deploys", createDeployCheckRoute);
+app.get("/api/deploys", listDeploysRoute);
+app.get("/api/deploys/:sha", getDeployRoute);
 
 export default {
   fetch: app.fetch,
