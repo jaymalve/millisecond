@@ -13,6 +13,41 @@ const MetricPointSchema = z.object({
 });
 
 /**
+ * Narrows the GraphQL response at the fetch boundary instead of casting
+ * — `data`/`viewer` are nullable rather than absent-on-error, matching
+ * how a GraphQL response can carry `errors` alongside partial/null `data`
+ * rather than one or the other.
+ */
+const GraphQLResponseSchema = z.object({
+  data: z
+    .object({
+      viewer: z
+        .object({
+          accounts: z.array(
+            z.object({
+              workersInvocationsAdaptive: z.array(
+                z.object({
+                  dimensions: z.object({ datetimeHour: z.string() }),
+                  sum: z.object({ requests: z.number(), errors: z.number() }),
+                  quantiles: z.object({
+                    cpuTimeP50: z.number(),
+                    cpuTimeP99: z.number(),
+                    wallTimeP50: z.number(),
+                    wallTimeP99: z.number(),
+                  }),
+                }),
+              ),
+            }),
+          ),
+        })
+        .nullable(),
+    })
+    .nullable()
+    .optional(),
+  errors: z.array(z.object({ message: z.string() })).optional(),
+});
+
+/**
  * Field names below are the `workersInvocationsAdaptive` GraphQL dataset
  * as of early 2025 — verify against Cloudflare's schema explorer
  * (https://developers.cloudflare.com/analytics/graphql-api/) if this
@@ -73,13 +108,13 @@ export const getMetricsTool = createTool({
       throw new Error(`Cloudflare GraphQL API error: ${res.status} ${await res.text()}`);
     }
 
-    const json = (await res.json()) as any;
+    const json = GraphQLResponseSchema.parse(await res.json());
     if (json.errors?.length) {
       throw new Error(`Cloudflare GraphQL API returned errors: ${JSON.stringify(json.errors)}`);
     }
 
-    const rows = json.data?.viewer?.accounts?.[0]?.workersInvocationsAdaptive ?? [];
-    return rows.map((r: any) => ({
+    const rows = json.data?.viewer?.accounts[0]?.workersInvocationsAdaptive ?? [];
+    return rows.map((r) => ({
       datetimeHour: r.dimensions.datetimeHour,
       requests: r.sum.requests,
       errors: r.sum.errors,

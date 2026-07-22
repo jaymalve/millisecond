@@ -13,8 +13,12 @@ See [`CLAUDE.md`](CLAUDE.md) for the engineering principles this repo follows.
 
 ## Status
 
-Scaffolding in progress. See `target/`, `agent/`, and `web/` for the three
-packages that make up this project.
+Feature-complete for the take-home scope: the on-demand investigator
+agent, the cron-triggered watchdog, and CI-triggered post-deploy checks
+are all built and wired end-to-end. See `target/`, `agent/`, and `web/`
+for the three packages, `action/` for the GitHub Action CI calls to
+register a post-deploy check, and `architecture/` for how it all fits
+together.
 
 ## Architecture
 
@@ -69,11 +73,6 @@ Three Cloudflare Workers:
 
 ## Future improvements
 
-- Cron-triggered autonomous mode: run the detection loop on a schedule and
-  auto-open an investigation when a regression is found, instead of only
-  on-demand.
-- Stream intermediate tool-call/tool-result events to the UI too, not just
-  the final answer — currently only Braintrust sees the full trace live.
 - Close the loop on the proposed fix: deploy it to a preview environment,
   re-run load, and report a measured before/after instead of a suggestion.
 

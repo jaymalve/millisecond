@@ -10,6 +10,16 @@ const DeployInfoSchema = z.object({
   url: z.string(),
 });
 
+/** Narrows the GitHub commits API response at the fetch boundary instead of casting. */
+const GitHubCommitSchema = z.object({
+  sha: z.string(),
+  html_url: z.string(),
+  commit: z.object({
+    message: z.string(),
+    author: z.object({ date: z.string() }),
+  }),
+});
+
 export function githubHeaders(): Record<string, string> {
   const headers: Record<string, string> = {
     accept: "application/vnd.github+json",
@@ -37,10 +47,10 @@ export const listDeploysTool = createTool({
     if (!res.ok) {
       throw new Error(`GitHub commits API error: ${res.status} ${await res.text()}`);
     }
-    const rows = (await res.json()) as any[];
+    const rows = z.array(GitHubCommitSchema).parse(await res.json());
     return rows.map((c) => ({
       sha: c.sha,
-      shortSha: (c.sha as string).slice(0, 7),
+      shortSha: c.sha.slice(0, 7),
       message: c.commit.message,
       authoredAt: c.commit.author.date,
       url: c.html_url,

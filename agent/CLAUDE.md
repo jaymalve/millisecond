@@ -28,6 +28,12 @@ investigates performance regressions in `target/`.
   tables. Separate from `investigate.ts`'s manual, streamed flow —
   watchdog investigations already ran to completion server-side by the
   time anyone requests them.
+- `src/postDeploy/` — the CI-triggered half of the agent (a Workflow, not
+  a cron tick). See its own section below.
+- `src/routes/deploys.ts` — `POST /api/deploys` (CI calls this after a
+  deploy to register a check), `GET /api/deploys` (rollup by SHA), `GET
+  /api/deploys/:sha` (per-route detail). The only auth-gated route in
+  this package — see the post-deploy section below for why.
 
 ## Why Mastra-as-library, not Mastra's own deployer
 
@@ -104,3 +110,38 @@ Two-tier by design, and don't collapse the tiers into one:
 two routes. It isn't reading from the web app's Projects list — that
 list is still cosmetic (see `web/src/lib/projects.ts`), so there's
 nothing real to iterate over yet.
+
+## The post-deploy check (`src/postDeploy/`)
+
+CI calls `POST /api/deploys` right after a deploy; the handler records
+the SHA and creates a `PostDeployCheckWorkflow` instance (Cloudflare
+Workflows, bound as `POST_DEPLOY_CHECK` in `wrangler.toml`) — the
+one-shot, arbitrary-future-timestamp scheduling primitive this needs,
+which neither Cron Triggers (fixed interval) nor a Durable Object alarm
+(one per DO) provide cleanly. Full reasoning in
+`architecture/post-deploy-triggers.md`; this section is package
+conventions, not the design rationale.
+
+Reuses as much of the watchdog as it can rather than forking it:
+`getRouteMetrics` and `triggerInvestigation` (`src/watchdog/runWatchdogCheck.ts`)
+are called as-is. The one thing it does **not** reuse is
+`findRegressionWindow` for the actual comparison — that function
+searches for an unknown changepoint within one continuous series, which
+is the watchdog's problem, not this one's: here the split point (the
+deploy boundary) is already known. `compareToBaseline`
+(`src/mastra/tools/regression.ts`, alongside `findRegressionWindow`) is
+the direct two-group version of the same score formula. Don't reach for
+`findRegressionWindow` here even though it's tempting to reuse — see the
+architecture doc for why that was tried first and reverted.
+
+`src/postDeploy/resolveBaseline.ts` throws `NonRetryableError` (from
+`cloudflare:workflows`), not a plain `Error`, for config problems (unknown
+SHA, baseline still live) — a plain `Error` would make Workflows retry a
+problem that can't change between retries.
+
+Unlike the watchdog, `POST /api/deploys` is reachable from outside this
+Cloudflare account (GitHub Actions calls it), so it's the one route in
+this package gated on a shared secret (`DEPLOY_WEBHOOK_SECRET`), checked
+with `crypto.subtle.timingSafeEqual` — a workerd extension to Web
+Crypto, not `node:crypto` (that module's types aren't available in this
+runtime's type declarations, `nodejs_compat` notwithstanding).
