@@ -37,7 +37,7 @@ static template):
   retry-with-trivial-variant, each `(tool, args)` pair at most once) —
   added after a real run wasted a chunk of its subrequest budget
   retrying `/orders` vs `/api/orders` vs `/api/orders/`. See
-  [gotchas.md](gotchas.md).
+  [debug.md](debug.md).
 - `maxSteps: 15` (Mastra default is 5) — seven tools plus a synthesis
   step doesn't fit in five steps; found via an actual run that hit the
   cap and ended with no answer.

@@ -17,5 +17,5 @@ per-package conventions.
 - [watchdog-regression-detection.md](watchdog-regression-detection.md) —
   the cron-triggered, LLM-free cheap tier that decides when the
   expensive tier (a full agent investigation) is worth running.
-- [gotchas.md](gotchas.md) — three bugs found only by deploying and
+- [debug.md](debug.md) — three bugs found only by deploying and
   exercising the real system.
