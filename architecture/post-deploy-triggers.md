@@ -1,9 +1,12 @@
 # Post-deploy triggers
 
-**Status: Workflow class implemented (`agent/src/postDeploy/`); the
-`POST /api/deploys` entry point and the `deploys` write path are not yet
-built, so nothing can trigger it end-to-end yet.** This is the agreed
-shape for the next (and last, by intent — see root `CLAUDE.md`) feature:
+**Status: implemented end-to-end** — Workflow class
+(`agent/src/postDeploy/`), the `POST /api/deploys` entry point, and
+`GET /api/deploys` / `GET /api/deploys/:sha` for reading results back.
+Not yet built: the actual GitHub Action that calls `POST /api/deploys`
+from CI (this doc's config surface is the intended contract for it, not
+a component that exists in this repo). This was the agreed shape for the
+next (and last, by intent — see root `CLAUDE.md`) feature:
 a CI-triggered regression check tied to a specific deploy, as opposed to
 the watchdog's interval-based cron check
 (`architecture/watchdog-regression-detection.md`).
@@ -222,9 +225,17 @@ see deferred list.
     deploy-sha: ${{ github.sha }}
 ```
 
-Surfaced only in the existing web UI (new `GET /api/deploys` +
-`GET /api/deploys/:id`, same list/detail shape as `agent/src/routes/alerts.ts`)
-— no new notification channel.
+Surfaced only in the existing web UI — no new notification channel.
+Implemented in `agent/src/routes/deploys.ts`, but *not* a flat mirror of
+`alerts.ts`: `deploy_checks` is `(deploy, route)`-grained, so a flat list
+would show several indistinguishable-looking rows per deploy.
+`GET /api/deploys` rolls up by SHA instead (`routesChecked`,
+`regressionsDetected`, via a `LEFT JOIN` against `deploys` —
+`routesChecked: 0` means the check is still pending). `GET
+/api/deploys/:sha` (not `:id` — the SHA is the natural external
+identifier, and it's also the Workflow instance id) expands one deploy
+into its full per-route breakdown, with `alertId` as the join to `GET
+/api/alerts/:id` for escalated checks.
 
 ## Explicitly deferred
 
