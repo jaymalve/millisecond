@@ -8,6 +8,12 @@ TARGET_SCRIPT_NAME = "millisecond-target"
 GITHUB_OWNER = "jaymalve"
 GITHUB_REPO = "millisecond"
 
+# Cheap regression check every 30 minutes; only triggers a full (LLM)
+# investigation when it actually finds something — see
+# src/watchdog/checkRoute.ts.
+[triggers]
+crons = ["*/30 * * * *"]
+
 # Same database_id as target/wrangler.toml — D1 databases can be bound
 # from more than one Worker. Used here both by the get-trace-spans tool
 # and as Mastra's own storage backend (see src/mastra/index.ts).

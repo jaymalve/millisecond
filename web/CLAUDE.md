@@ -24,6 +24,18 @@ nothing else — no direct Cloudflare/OpenAI/GitHub access from the browser.
 - `src/lib/history.ts` — investigation history, persisted to
   `localStorage` (no backend/auth, so it's per-device). Pure functions
   only; `App.tsx` owns the actual `history`/`selectedId` React state.
+- `src/lib/alerts.ts` — fetches watchdog-triggered investigations from
+  `agent`'s `GET /api/alerts` / `/api/alerts/:id`. Unlike history, these
+  are server-side (D1), not localStorage — a cron-triggered investigation
+  has no browser to save to. The transcript arrives already merged into
+  `TranscriptItem[]` (built server-side by `agent/src/lib/transcript.ts`'s
+  `TranscriptBuilder`, the same merge logic as this package's reducer,
+  duplicated rather than shared for the same reason `wireEvents.ts` is),
+  so it renders directly via `<Transcript>` with no client-side replay step.
+- `src/lib/projects.ts` — cosmetic-only project list (see its own
+  comment). Don't build real per-project agent scoping on top of this
+  without also rewiring `agent/src/watchdog/routes.ts`'s hardcoded route
+  list and the tools that assume a single target worker.
 
 ## Conventions specific to this package
 

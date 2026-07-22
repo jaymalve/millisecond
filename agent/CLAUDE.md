@@ -18,6 +18,16 @@ investigates performance regressions in `target/`.
   with a Zod input/output schema. Tool logic (the actual fetch/query/calc)
   lives in the same file as its schema — there's exactly one thing calling
   it, so splitting them apart would be indirection, not clarity.
+  `getRouteMetrics`/`findRegressionWindow` also export their underlying
+  plain functions, since the watchdog (below) needs to call them without
+  going through an LLM turn.
+- `src/watchdog/` — the scheduled, autonomous half of the agent. See its
+  own section below.
+- `src/routes/alerts.ts` — `GET /api/alerts` (list) and `GET
+  /api/alerts/:id` (full transcript), reading from the watchdog's own D1
+  tables. Separate from `investigate.ts`'s manual, streamed flow —
+  watchdog investigations already ran to completion server-side by the
+  time anyone requests them.
 
 ## Why Mastra-as-library, not Mastra's own deployer
 
@@ -69,3 +79,28 @@ Every agent run must be traced in Braintrust — this isn't optional
 instrumentation, it's how "agent design quality" in a review actually gets
 inspected after the fact. If you add a tool or a second agent, confirm it
 shows up in Braintrust traces before considering the work done.
+
+## The watchdog (`src/watchdog/`)
+
+Runs on the Cron Trigger configured in `wrangler.toml` (every 30 minutes),
+via the `scheduled()` export in `src/index.ts` sitting alongside the
+Hono `fetch()` export — same file, two different entry points into the
+same Worker.
+
+Two-tier by design, and don't collapse the tiers into one:
+- `checkRoute.ts` is the cheap tier — pulls metrics and runs changepoint
+  detection in plain code, no LLM call. Runs for every monitored route
+  on every tick. Also enforces the cooldown (2 hours by default): a
+  route that already got a full investigation recently doesn't get
+  another one just because the regression is still there.
+- `runWatchdogCheck.ts` is the expensive tier — only reached when
+  `checkRoute` says `shouldTrigger`. Builds the exact same investigator
+  agent used for manual investigations (`createMastra(env)`), runs it to
+  completion, and persists the transcript to `watchdog_alerts` (D1) —
+  there's no browser attached to a cron invocation to save it to
+  localStorage the way manual investigations do.
+
+`MONITORED_ROUTES` (`src/watchdog/routes.ts`) is hardcoded to `target/`'s
+two routes. It isn't reading from the web app's Projects list — that
+list is still cosmetic (see `web/src/lib/projects.ts`), so there's
+nothing real to iterate over yet.

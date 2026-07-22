@@ -1,9 +1,10 @@
 import { useEffect, useReducer, useRef, useState } from "react";
-import { investigationReducer, initialState, type InvestigationState } from "./state";
+import { investigationReducer, initialState, type InvestigationState, type TranscriptItem } from "./state";
 import { investigate } from "./api";
 import type { WireEvent } from "./wireEvents";
 import { loadHistory, saveInvestigation, type InvestigationRecord } from "./lib/history";
 import { loadProjects, saveProjects, type Project } from "./lib/projects";
+import { fetchAlerts, fetchAlert, type AlertSummary, type AlertDetail } from "./lib/alerts";
 import { InvestigateForm } from "./components/InvestigateForm";
 import { Transcript } from "./components/Transcript";
 import { ThinkingIndicator } from "./components/ThinkingIndicator";
@@ -19,12 +20,26 @@ export function App() {
   const [activeProjectId, setActiveProjectId] = useState(() => projects[0]?.id ?? "target");
   const [showAddProject, setShowAddProject] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [alerts, setAlerts] = useState<AlertSummary[]>([]);
+  const [selectedAlertId, setSelectedAlertId] = useState<string | null>(null);
+  const [selectedAlertItems, setSelectedAlertItems] = useState<TranscriptItem[] | null>(null);
   const outputRef = useRef<HTMLDivElement>(null);
 
   const isStreaming = state.status === "streaming";
   const selectedRecord = selectedId ? history.find((r) => r.id === selectedId) : undefined;
-  const displayItems = selectedRecord ? selectedRecord.items : state.status !== "idle" ? state.items : [];
+  const displayItems = selectedAlertItems ?? (selectedRecord ? selectedRecord.items : state.status !== "idle" ? state.items : []);
   const displayError = selectedRecord?.status === "error" ? selectedRecord.errorMessage : state.status === "error" ? state.message : undefined;
+
+  // Fetching the alert list from the agent's API on mount is a genuine
+  // "sync with an external system" case for useEffect — there's no user
+  // event that causes it, it's just what's already there server-side.
+  useEffect(() => {
+    fetchAlerts()
+      .then(setAlerts)
+      .catch(() => {
+        /* Alerts are a nice-to-have surface, not worth blocking the rest of the app over. */
+      });
+  }, []);
 
   // The transcript is now a fixed-height internal scroll pane (not a
   // growing page), so it needs to be told to follow new content itself —
@@ -36,6 +51,8 @@ export function App() {
 
   async function handleSubmit(question: string) {
     setSelectedId(null);
+    setSelectedAlertId(null);
+    setSelectedAlertItems(null);
     dispatch({ type: "start" });
 
     // Mirrors the reducer's own logic to capture the final transcript for
@@ -71,7 +88,27 @@ export function App() {
 
   function handleNew() {
     setSelectedId(null);
+    setSelectedAlertId(null);
+    setSelectedAlertItems(null);
     dispatch({ type: "reset" });
+  }
+
+  function handleSelectHistory(id: string) {
+    setSelectedAlertId(null);
+    setSelectedAlertItems(null);
+    setSelectedId(id);
+  }
+
+  async function handleSelectAlert(id: string) {
+    setSelectedId(null);
+    setSelectedAlertId(id);
+    setSelectedAlertItems(null);
+    try {
+      const detail: AlertDetail = await fetchAlert(id);
+      setSelectedAlertItems(detail.transcript);
+    } catch {
+      setSelectedAlertItems([]);
+    }
   }
 
   function handleAddProject(project: Project) {
@@ -91,10 +128,13 @@ export function App() {
         activeProjectId={activeProjectId}
         onSelectProject={setActiveProjectId}
         onAddProjectClick={() => setShowAddProject(true)}
+        alerts={alerts}
+        selectedAlertId={selectedAlertId}
+        onSelectAlert={handleSelectAlert}
         history={history}
         selectedId={selectedId}
         disabled={isStreaming}
-        onSelect={setSelectedId}
+        onSelect={handleSelectHistory}
         onNew={handleNew}
       />
       <main className="page">
@@ -105,7 +145,7 @@ export function App() {
 
         <section className="page__output" ref={outputRef}>
           {displayItems.length > 0 && <Transcript items={displayItems} />}
-          {isStreaming && !selectedRecord && <ThinkingIndicator />}
+          {isStreaming && !selectedRecord && !selectedAlertId && <ThinkingIndicator />}
           {displayError && <p className="error">{displayError}</p>}
         </section>
 

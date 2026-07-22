@@ -1,12 +1,16 @@
 import type { InvestigationRecord } from "../lib/history";
 import { formatRelativeTime } from "../lib/history";
 import type { Project } from "../lib/projects";
+import type { AlertSummary } from "../lib/alerts";
 
 interface SidebarProps {
   projects: Project[];
   activeProjectId: string;
   onSelectProject: (id: string) => void;
   onAddProjectClick: () => void;
+  alerts: AlertSummary[];
+  selectedAlertId: string | null;
+  onSelectAlert: (id: string) => void;
   history: InvestigationRecord[];
   selectedId: string | null;
   disabled: boolean;
@@ -19,6 +23,9 @@ export function Sidebar({
   activeProjectId,
   onSelectProject,
   onAddProjectClick,
+  alerts,
+  selectedAlertId,
+  onSelectAlert,
   history,
   selectedId,
   disabled,
@@ -47,6 +54,26 @@ export function Sidebar({
             {project.name}
           </button>
         ))}
+      </div>
+
+      <div className="sidebar__section">
+        <div className="sidebar__section-header">
+          <span>Alerts</span>
+        </div>
+        <div className="sidebar__list">
+          {alerts.length === 0 && <p className="sidebar__empty">No alerts</p>}
+          {alerts.map((alert) => (
+            <button
+              key={alert.id}
+              className={`sidebar__item ${alert.id === selectedAlertId ? "sidebar__item--active" : ""}`}
+              onClick={() => onSelectAlert(alert.id)}
+              disabled={disabled}
+            >
+              <span className="sidebar__item-question">⚠ {alert.route}</span>
+              <span className="sidebar__item-time">{formatRelativeTime(alert.detectedAt)}</span>
+            </button>
+          ))}
+        </div>
       </div>
 
       <div className="sidebar__section sidebar__section--grow">
