@@ -1,10 +1,12 @@
 # Post-deploy triggers
 
-**Status: design, not yet implemented.** This is the agreed shape for the
-next (and last, by intent — see root `CLAUDE.md`) feature: a CI-triggered
-regression check tied to a specific deploy, as opposed to the watchdog's
-interval-based cron check (`architecture/watchdog-regression-detection.md`).
-Written now so the reasoning survives independent of who implements it.
+**Status: Workflow class implemented (`agent/src/postDeploy/`); the
+`POST /api/deploys` entry point and the `deploys` write path are not yet
+built, so nothing can trigger it end-to-end yet.** This is the agreed
+shape for the next (and last, by intent — see root `CLAUDE.md`) feature:
+a CI-triggered regression check tied to a specific deploy, as opposed to
+the watchdog's interval-based cron check
+(`architecture/watchdog-regression-detection.md`).
 
 ## Problem
 
@@ -50,7 +52,7 @@ new `deploys` table, then creates a Workflow instance:
 ```ts
 await env.POST_DEPLOY_CHECK.create({
   id: sha,
-  params: { sha, routes, after, baseline, sensitivity },
+  params: { sha, routes, after, window, baseline, sensitivity },
 });
 ```
 
@@ -94,27 +96,56 @@ to duplicate that table.
 
 ## Workflow steps
 
+Implemented in `agent/src/postDeploy/postDeployWorkflow.ts`
+(`PostDeployCheckWorkflow`), bound as `POST_DEPLOY_CHECK` in
+`agent/wrangler.toml`:
+
 ```
-step.sleep(after)
+step.sleep("warmup", afterMs)
   → for each route in routes:
-      step.do("resolve baseline window", ...)   // see below
-      step.do("sample post-deploy metrics", ...) // getRouteMetrics, post-deploy window
-      step.do("sample baseline metrics", ...)    // getRouteMetrics, baseline window
-      step.do("compare", ...)                    // findRegressionWindow, with sensitivity's threshold
+      step.do("compute regression: {route}", ...)  // resolveBaseline + getRouteMetrics (both windows) + compareToBaseline
       if regression:
-        step.do("investigate", ...)              // triggerInvestigation — same function the cron watchdog calls
-      step.do("persist deploy_checks row", ...)
+        step.do("investigate: {route}", { timeout: "10 minutes" }, ...) // triggerInvestigation
+      step.do("persist deploy_checks: {route}", ...)
 ```
 
-Every function above already exists and is reused as-is:
-`getRouteMetrics` (`agent/src/mastra/tools/routeMetrics.ts`),
-`findRegressionWindow` (`agent/src/mastra/tools/regression.ts`, needs the
-threshold parameter described below), and `triggerInvestigation`
-(`agent/src/watchdog/runWatchdogCheck.ts`) — the same investigator agent
-run, the same `watchdog_alerts` write. A post-deploy check and a cron
-check that both find a regression on `/api/orders` produce
-indistinguishable investigation transcripts; only how they got triggered
-differs.
+The "resolve baseline / sample post-deploy / sample baseline / compare"
+steps from the original sketch collapsed into one `step.do` — they're all
+fast reads with no side effects worth checkpointing independently. Only
+the two side-effecting operations (the LLM investigation, the D1 write)
+get their own step.
+
+**`compareToBaseline`, not `findRegressionWindow`, does the comparison.**
+The original sketch above called for reusing `findRegressionWindow`, but
+that function *searches* for an unknown changepoint within one continuous
+series (what the cron watchdog needs, since it doesn't know where a
+regression started). Here the split point is already known — it's the
+deploy boundary between two separate, often non-adjacent windows — so
+searching for it would be both wasteful and unreliable (the "best" split
+found by scanning a concatenated baseline+post-deploy series isn't
+guaranteed to land on the actual boundary). `compareToBaseline`
+(`agent/src/mastra/tools/regression.ts`, alongside `findRegressionWindow`,
+sharing its `mean`/`variance` helpers) does the direct two-group version
+of the same score formula instead. See
+[`regression-score-interpretation.md`](regression-score-interpretation.md)
+for why this also means `compareToBaseline` doesn't carry
+`findRegressionWindow`'s look-elsewhere-effect bias.
+
+`getRouteMetrics` (`agent/src/mastra/tools/routeMetrics.ts`) and
+`triggerInvestigation` (`agent/src/watchdog/runWatchdogCheck.ts`) are
+reused as-is — the same investigator agent run, the same
+`watchdog_alerts` write a cron-triggered escalation produces.
+`triggerInvestigation` now returns the generated `watchdog_alerts.id`
+(previously `Promise<void>`) so the workflow can set
+`deploy_checks.alert_id`; the cron path ignores the return value, so this
+was a backward-compatible signature change.
+
+Supporting modules, one responsibility each:
+- `resolveBaseline.ts` — SHA → time window, against `deploys`.
+- `parseDuration.ts` — parses the CI config's `"5m"`/`"10m"`/`"1h"`
+  shorthand into milliseconds (used for `step.sleep`'s numeric-ms form,
+  not Workflows' own English-phrase duration parser).
+- `sensitivity.ts` — the `sensitivity` enum → threshold mapping.
 
 ## Baseline resolution
 
@@ -132,26 +163,35 @@ original 8% is baked into the baseline and becomes permanently invisible.
 Pinning `baseline: <known-good-sha>` fixes the reference point until a
 human deliberately moves it.
 
-Edge cases the resolver must handle:
-- Baseline SHA not in `deploys` → config error in the check result, not
-  a silent fallback to some other window.
+Edge cases the resolver (`agent/src/postDeploy/resolveBaseline.ts`)
+handles, each as a `NonRetryableError` (imported from
+`cloudflare:workflows`) rather than a plain `Error` — Workflows' default
+step retry would otherwise burn attempts retrying a config problem that
+can't change between retries:
+- Baseline SHA not in `deploys`.
+- Baseline resolves to the deploy under test itself (`baselineSha ===
+  sha`) — nothing to compare against.
 - Baseline SHA is still the current live deploy (no "next" boundary yet)
-  → reject; comparing a deploy against itself is meaningless.
-- Baseline window too short to sample (e.g. it was live 90 seconds
-  before a rollback) → same `values.length < 4` guard
-  `findRegressionWindow` already enforces, surfaced as "insufficient
-  baseline data" rather than a silent null.
+  — comparing a deploy against itself is meaningless.
+
+Baseline window too short to sample (e.g. it was live 90 seconds before a
+rollback) isn't a resolver error — it surfaces downstream as
+`compareToBaseline` returning `null` (its own guard: fewer than 2 buckets
+on either side), which reads as "no regression detected" rather than a
+distinct "insufficient data" status. Known simplification, inherited from
+`findRegressionWindow` tolerating the same ambiguity today for the cron
+watchdog — not a new gap this feature introduces.
 
 `"1h trailing window"` (considered, dropped) doesn't have this integrity
 property and mostly duplicates what the cron watchdog already checks.
 
 ## Sensitivity
 
-`findRegressionWindow` currently hardcodes its threshold
-(`regression.ts:53`, `bestScore < 1.5`). This needs a third optional
-parameter, `threshold = 1.5`, so the existing cron-watchdog callsite in
-`checkRoute.ts` is unaffected by omission. `sensitivity` in the CI config
-maps to that threshold:
+Implemented: both `findRegressionWindow` and `compareToBaseline` take an
+optional `threshold` parameter, defaulting to `DEFAULT_REGRESSION_THRESHOLD`
+(`1.5`) — the existing cron-watchdog callsite in `checkRoute.ts` passes
+neither, so it's unaffected. `agent/src/postDeploy/sensitivity.ts` maps
+the CI config's `sensitivity` to that threshold:
 
 | `sensitivity` | threshold |
 |---|---|

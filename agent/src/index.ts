@@ -5,6 +5,11 @@ import { investigateRoute } from "./routes/investigate";
 import { listAlertsRoute, getAlertRoute } from "./routes/alerts";
 import { runWatchdogCheck } from "./watchdog/runWatchdogCheck";
 
+// Wrangler resolves [[workflows]]'s class_name against a named export of
+// this file (the Worker's `main`) — not a module-scope side effect, so
+// this export is required even though nothing calls it directly yet.
+export { PostDeployCheckWorkflow } from "./postDeploy/postDeployWorkflow";
+
 const app = new Hono<{ Bindings: Env }>();
 
 app.use("/api/*", cors());

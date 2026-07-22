@@ -17,8 +17,11 @@ import { MONITORED_ROUTES } from "./routes";
  * reducing it at the end — that approach genuinely hit Cloudflare's
  * per-invocation CPU/memory limit (error 1102) on a real investigation,
  * confirmed via a manual test before this fix.
+ *
+ * Returns the generated watchdog_alerts.id — the cron path ignores it,
+ * but the post-deploy workflow needs it to set deploy_checks.alert_id.
  */
-export async function triggerInvestigation(env: Env, route: string, changepointLabel?: string): Promise<void> {
+export async function triggerInvestigation(env: Env, route: string, changepointLabel?: string): Promise<string> {
   const mastra = createMastra(env);
   const agent = mastra.getAgentById("investigator");
   const prompt = changepointLabel
@@ -36,11 +39,14 @@ export async function triggerInvestigation(env: Env, route: string, changepointL
     if (event) builder.add(event);
   }
 
+  const alertId = crypto.randomUUID();
   await env.TARGET_DB.prepare(
     `INSERT INTO watchdog_alerts (id, route, detected_at, report_text, transcript_json) VALUES (?, ?, ?, ?, ?)`,
   )
-    .bind(crypto.randomUUID(), route, Date.now(), builder.getReportText(), JSON.stringify(builder.getItems()))
+    .bind(alertId, route, Date.now(), builder.getReportText(), JSON.stringify(builder.getItems()))
     .run();
+
+  return alertId;
 }
 
 /**

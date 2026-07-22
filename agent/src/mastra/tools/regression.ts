@@ -64,6 +64,43 @@ export function findRegressionWindow(
   return best;
 }
 
+export interface BaselineComparison {
+  regressed: boolean;
+  percentIncrease: number;
+  score: number;
+}
+
+/**
+ * Direct two-group comparison for when the split point is already known
+ * (a baseline window vs. a post-deploy window — see
+ * agent/src/postDeploy/postDeployWorkflow.ts) rather than searched for.
+ * Same score formula as findRegressionWindow (a Cohen's-d-style
+ * standardized mean difference; see
+ * architecture/regression-score-interpretation.md), but without the
+ * split-point scan — so unlike findRegressionWindow, this doesn't carry
+ * the scan's look-elsewhere-effect bias. A single planned comparison at
+ * a given threshold is a stronger signal than the same score from a
+ * many-split-point search.
+ */
+export function compareToBaseline(
+  baselineValues: number[],
+  postDeployValues: number[],
+  threshold: number = DEFAULT_REGRESSION_THRESHOLD,
+): BaselineComparison | null {
+  if (baselineValues.length < 2 || postDeployValues.length < 2) return null;
+
+  const baselineMean = mean(baselineValues);
+  const postDeployMean = mean(postDeployValues);
+  const pooledStd = Math.sqrt((variance(baselineValues) + variance(postDeployValues)) / 2) || 1;
+  const score = Math.abs(postDeployMean - baselineMean) / pooledStd;
+
+  return {
+    regressed: score >= threshold && postDeployMean > baselineMean,
+    percentIncrease: ((postDeployMean - baselineMean) / baselineMean) * 100,
+    score,
+  };
+}
+
 export const findRegressionWindowTool = createTool({
   id: "find-regression-window",
   description:

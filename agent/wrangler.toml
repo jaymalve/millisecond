@@ -22,6 +22,14 @@ binding = "TARGET_DB"
 database_name = "millisecond-target-db"
 database_id = "0b05b005-c1ee-4ebf-9616-9c72380e086c"
 
+# CI-triggered regression check tied to a specific deploy SHA — see
+# architecture/post-deploy-triggers.md. Entry point (POST /api/deploys)
+# not wired up yet; this just registers the Workflow class.
+[[workflows]]
+name = "millisecond-post-deploy-check"
+binding = "POST_DEPLOY_CHECK"
+class_name = "PostDeployCheckWorkflow"
+
 # Secrets (set with `wrangler secret put <NAME>`, or in .dev.vars locally):
 #   OPENAI_API_KEY       - required
 #   CF_API_TOKEN         - required, Account Analytics:Read scope

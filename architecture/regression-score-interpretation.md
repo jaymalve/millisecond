@@ -74,6 +74,19 @@ traffic, not derived from a formula — lowering it further should be
 validated against `watchdog_runs`' false-positive rate first, not assumed
 safe by analogy to the stats textbook definition.
 
+This bias is specific to the *scan*, not the formula. `compareToBaseline`
+(`agent/src/mastra/tools/regression.ts`, added for
+[post-deploy-triggers.md](post-deploy-triggers.md)) uses the identical
+score formula on two pre-defined groups — a baseline window and a
+post-deploy window whose boundary is already known from the `deploys`
+table — with no split search at all. A `1.5` from `compareToBaseline` is
+a single planned comparison and doesn't carry the look-elsewhere
+inflation a `1.5` from `findRegressionWindow` does, even though both
+currently default to the same numeric threshold. If the two thresholds
+are ever tuned independently, this is why `compareToBaseline` can
+reasonably run lower than `findRegressionWindow` for the same target
+false-positive rate.
+
 **Edge segments are noisier.** A changepoint found near either edge of
 the search range (small `split`, or `split` near `length - 1`) computes
 `variance()` from very few buckets. `pooledStd` — and therefore the score

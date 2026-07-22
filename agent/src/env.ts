@@ -1,4 +1,5 @@
 import { env as workerEnv } from "cloudflare:workers";
+import type { PostDeployCheckParams } from "./postDeploy/postDeployWorkflow";
 
 export interface Env {
   TARGET_DB: D1Database;
@@ -11,6 +12,7 @@ export interface Env {
   GITHUB_TOKEN?: string;
   BRAINTRUST_API_KEY: string;
   BRAINTRUST_PROJECT_ID: string;
+  POST_DEPLOY_CHECK: Workflow<PostDeployCheckParams>;
 }
 
 // `cloudflare:workers`'s `env` is populated by the runtime even when read
