@@ -1,14 +1,13 @@
 # Post-deploy triggers
 
 **Status: implemented end-to-end** — Workflow class
-(`agent/src/postDeploy/`), the `POST /api/deploys` entry point, and
-`GET /api/deploys` / `GET /api/deploys/:sha` for reading results back.
-Not yet built: the actual GitHub Action that calls `POST /api/deploys`
-from CI (this doc's config surface is the intended contract for it, not
-a component that exists in this repo). This was the agreed shape for the
-next (and last, by intent — see root `CLAUDE.md`) feature:
-a CI-triggered regression check tied to a specific deploy, as opposed to
-the watchdog's interval-based cron check
+(`agent/src/postDeploy/`), the `POST /api/deploys` entry point,
+`GET /api/deploys` / `GET /api/deploys/:sha` for reading results back,
+and the GitHub Action (`action/`, see
+[`github-action.md`](github-action.md)) other repos call from CI. This
+was the last feature, by intent — see root `CLAUDE.md` — closing the
+loop: a CI-triggered regression check tied to a specific deploy, as
+opposed to the watchdog's interval-based cron check
 (`architecture/watchdog-regression-detection.md`).
 
 ## Problem
@@ -213,17 +212,28 @@ see deferred list.
 
 ## CI config surface (v1)
 
+Implemented as a composite GitHub Action — see
+[`github-action.md`](github-action.md) for why composite (not a JS
+action) and how it's structured. Real, working syntax:
+
 ```yaml
-- uses: millisecond/post-deploy-check@v1
+- uses: jaymalve/millisecond/action@main
   with:
-    endpoint: "https://api.example.com"
+    endpoint: "https://agent.millisecond.dev"
+    secret: ${{ secrets.MILLISECOND_DEPLOY_SECRET }}
     routes: "*"                  # or explicit list: "/checkout,/cart"
     after: "5m"                  # warmup delay before sampling starts
     window: "10m"                # how long to sample post-deploy
     baseline: "previous-deploy"  # or an explicit commit SHA
     sensitivity: "default"       # low | default | high
-    deploy-sha: ${{ github.sha }}
 ```
+
+No `deploy-sha` input — the original sketch above had callers pass
+`${{ github.sha }}` explicitly, but `action.yml` defaults can't contain
+GitHub Expressions (they're literal strings), so the action falls back
+to the `$GITHUB_SHA` env var every runner sets automatically. An
+optional `sha` input still exists for the rare case a caller needs to
+override it.
 
 Surfaced only in the existing web UI — no new notification channel.
 Implemented in `agent/src/routes/deploys.ts`, but *not* a flat mirror of

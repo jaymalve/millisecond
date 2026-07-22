@@ -20,8 +20,12 @@ per-package conventions.
 - [regression-score-interpretation.md](regression-score-interpretation.md) —
   what the changepoint score actually measures (an effect size, not a
   p-value) and why the alert thresholds sit where they do.
-- [post-deploy-triggers.md](post-deploy-triggers.md) — design for a
-  CI-triggered regression check tied to a specific deploy SHA, reusing
-  the watchdog's two-tier detection. Not yet implemented.
+- [post-deploy-triggers.md](post-deploy-triggers.md) — a CI-triggered
+  regression check tied to a specific deploy SHA, reusing the watchdog's
+  two-tier detection.
+- [github-action.md](github-action.md) — the composite GitHub Action
+  (`action/`) other repos use to call `POST /api/deploys`; why composite
+  over a JS action, and its fire-and-confirm (not fail-on-regression)
+  boundary.
 - [debug.md](debug.md) — three bugs found only by deploying and
   exercising the real system.

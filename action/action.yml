@@ -1,0 +1,100 @@
+name: 'millisecond post-deploy check'
+description: 'Registers a post-deploy performance-regression check with millisecond.dev after a deploy.'
+author: 'millisecond.dev'
+branding:
+  icon: 'activity'
+  color: 'blue'
+
+inputs:
+  endpoint:
+    description: 'Base URL of the millisecond agent Worker, e.g. https://agent.millisecond.dev'
+    required: true
+  secret:
+    description: 'Shared secret for POST /api/deploys. Pass a GitHub secret, never inline it.'
+    required: true
+  routes:
+    description: '"*" for every monitored route, or a comma-separated list, e.g. "/checkout,/cart"'
+    required: false
+    default: '*'
+  after:
+    description: 'Warmup delay before sampling starts, e.g. "5m"'
+    required: false
+    default: '5m'
+  window:
+    description: 'How long to sample the post-deploy window, e.g. "10m"'
+    required: false
+    default: '10m'
+  baseline:
+    description: '"previous-deploy", or an explicit commit SHA to compare against'
+    required: false
+    default: 'previous-deploy'
+  sensitivity:
+    description: 'low | default | high — see architecture/regression-score-interpretation.md in the millisecond repo'
+    required: false
+    default: 'default'
+  sha:
+    description: 'Commit SHA this deploy corresponds to. Defaults to the triggering commit.'
+    required: false
+    default: ''
+
+outputs:
+  sha:
+    description: 'The deploy SHA the check was registered under.'
+    value: ${{ steps.register.outputs.sha }}
+  workflow-instance-id:
+    description: 'The Workflow instance ID millisecond.dev created for this check.'
+    value: ${{ steps.register.outputs.workflow-instance-id }}
+
+runs:
+  using: 'composite'
+  steps:
+    - id: register
+      shell: bash
+      env:
+        MILLISECOND_ENDPOINT: ${{ inputs.endpoint }}
+        MILLISECOND_SECRET: ${{ inputs.secret }}
+        MILLISECOND_ROUTES: ${{ inputs.routes }}
+        MILLISECOND_AFTER: ${{ inputs.after }}
+        MILLISECOND_WINDOW: ${{ inputs.window }}
+        MILLISECOND_BASELINE: ${{ inputs.baseline }}
+        MILLISECOND_SENSITIVITY: ${{ inputs.sensitivity }}
+        MILLISECOND_SHA: ${{ inputs.sha }}
+      run: |
+        set -euo pipefail
+
+        # Defensive: mask the secret even though it should already be a
+        # GitHub secret at the call site — protects against a caller
+        # accidentally inlining it.
+        echo "::add-mask::${MILLISECOND_SECRET}"
+
+        SHA="${MILLISECOND_SHA:-$GITHUB_SHA}"
+        if [ -z "$SHA" ]; then
+          echo "::error::No SHA available — set the 'sha' input or ensure this runs in a normal GitHub Actions context."
+          exit 1
+        fi
+
+        BODY=$(jq -n \
+          --arg sha "$SHA" \
+          --arg routes "$MILLISECOND_ROUTES" \
+          --arg after "$MILLISECOND_AFTER" \
+          --arg window "$MILLISECOND_WINDOW" \
+          --arg baseline "$MILLISECOND_BASELINE" \
+          --arg sensitivity "$MILLISECOND_SENSITIVITY" \
+          '{sha: $sha, routes: $routes, after: $after, window: $window, baseline: $baseline, sensitivity: $sensitivity}')
+
+        RESPONSE_BODY="$(mktemp)"
+        HTTP_STATUS=$(curl -sS -o "$RESPONSE_BODY" -w '%{http_code}' \
+          -X POST "${MILLISECOND_ENDPOINT%/}/api/deploys" \
+          -H "authorization: Bearer ${MILLISECOND_SECRET}" \
+          -H "content-type: application/json" \
+          -d "$BODY")
+
+        if [ "$HTTP_STATUS" != "202" ]; then
+          echo "::error::POST /api/deploys returned $HTTP_STATUS: $(cat "$RESPONSE_BODY")"
+          exit 1
+        fi
+
+        WORKFLOW_INSTANCE_ID=$(jq -r '.workflowInstanceId' "$RESPONSE_BODY")
+        echo "Post-deploy check registered for $SHA (workflow instance: $WORKFLOW_INSTANCE_ID)"
+        echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+        echo "workflow-instance-id=$WORKFLOW_INSTANCE_ID" >> "$GITHUB_OUTPUT"
