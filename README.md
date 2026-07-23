@@ -5,20 +5,15 @@ service: it detects a latency/CPU shift, bisects it to the deploy that caused
 it, explains the mechanism by diffing request waterfalls before/after, and
 prices out the cost impact.
 
-Built as an AI agent take-home exercise: build an AI agent on Cloudflare
-Workers for understanding, monitoring, or investigating software
-infrastructure.
-
 See [`CLAUDE.md`](CLAUDE.md) for the engineering principles this repo follows.
 
 ## Status
 
-Feature-complete for the take-home scope: the on-demand investigator
-agent, the cron-triggered watchdog, and CI-triggered post-deploy checks
-are all built and wired end-to-end. See `target/`, `agent/`, and `web/`
-for the three packages, `action/` for the GitHub Action CI calls to
-register a post-deploy check, and `architecture/` for how it all fits
-together.
+Feature-complete: the on-demand investigator agent, the cron-triggered
+watchdog, and CI-triggered post-deploy checks are all built and wired
+end-to-end. See `target/`, `agent/`, and `web/` for the three packages,
+`action/` for the GitHub Action CI calls to register a post-deploy check,
+and `architecture/` for how it all fits together.
 
 ## Architecture
 
@@ -29,7 +24,7 @@ Three Cloudflare Workers:
   work (KV/D1/simulated external calls), some parallelized, some not. Every
   request writes timing spans to a D1 table, which stands in for a
   distributed tracing backend.
-- **`agent/`** — the actual submission. A Mastra agent (`@mastra/core`),
+- **`agent/`** — the core piece. A Mastra agent (`@mastra/core`),
   exposed over Hono at `POST /api/investigate`, with seven tools:
   1. `getRouteMetrics` — per-route request count and P50/P99 wall-time,
      bucketed in 5-minute windows, computed from the target's own D1 spans
