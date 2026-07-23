@@ -13,6 +13,16 @@ import { Sidebar } from "./components/Sidebar";
 import { AddProjectModal } from "./components/AddProjectModal";
 import { DeployChecks } from "./components/DeployChecks";
 import { DeployChecksSkeleton } from "./components/DeployChecksSkeleton";
+import { SidebarProvider, SidebarTrigger } from "./components/ui/sidebar";
+import {
+  MessageScrollerButton,
+  MessageScrollerContent,
+  MessageScrollerItem,
+  MessageScrollerProvider,
+  MessageScroller as MessageScrollerRoot,
+  MessageScrollerViewport,
+} from "./components/ui/message-scroller";
+import { Alert, AlertDescription } from "./components/ui/alert";
 
 export function App() {
   const [state, dispatch] = useReducer(investigationReducer, initialState);
@@ -54,14 +64,6 @@ export function App() {
       })
       .finally(() => setDeploysLoading(false));
   }, []);
-
-  // The transcript is now a fixed-height internal scroll pane (not a
-  // growing page), so it needs to be told to follow new content itself —
-  // the legitimate "sync with an external system" case for useEffect.
-  useEffect(() => {
-    const el = outputRef.current;
-    if (el) el.scrollTop = el.scrollHeight;
-  }, [displayItems]);
 
   async function handleSubmit(question: string) {
     setSelectedId(null);
@@ -164,7 +166,7 @@ export function App() {
   }
 
   return (
-    <div className="layout">
+    <SidebarProvider className="layout">
       <Sidebar
         projects={projects}
         activeProjectId={activeProjectId}
@@ -185,27 +187,53 @@ export function App() {
       />
       <main className="page">
         <header className="page__header">
-          <h1>millisecond.dev</h1>
+          <div className="page__header-row">
+            <SidebarTrigger />
+            <h1>millisecond.dev</h1>
+          </div>
           <p>Performance investigation agent for a Cloudflare Workers service.</p>
         </header>
 
-        <section className="page__output" ref={outputRef}>
-          {selectedDeploySha ? (
-            selectedDeployError ? (
-              <p className="error">{selectedDeployError}</p>
+        {selectedDeploySha ? (
+          <section className="page__output" ref={outputRef}>
+            <div className="mx-auto w-full max-w-[760px] px-8 py-6">
+            {selectedDeployError ? (
+              <Alert variant="destructive">
+                <AlertDescription>{selectedDeployError}</AlertDescription>
+              </Alert>
             ) : selectedDeployDetail ? (
               <DeployChecks deploy={selectedDeployDetail} onViewAlert={handleSelectAlert} />
             ) : (
               <DeployChecksSkeleton />
-            )
-          ) : (
-            <>
-              {displayItems.length > 0 && <Transcript items={displayItems} />}
-              {isStreaming && !selectedRecord && !selectedAlertId && <ThinkingIndicator />}
-              {displayError && <p className="error">{displayError}</p>}
-            </>
-          )}
-        </section>
+            )}
+            </div>
+          </section>
+        ) : (
+          <div className="page__transcript">
+            <MessageScrollerProvider autoScroll>
+              <MessageScrollerRoot>
+                <MessageScrollerViewport>
+                  <MessageScrollerContent className="mx-auto w-full max-w-[760px] px-8 py-6">
+                    {displayItems.length > 0 && <Transcript items={displayItems} />}
+                    {isStreaming && !selectedRecord && !selectedAlertId && (
+                      <MessageScrollerItem messageId="thinking-indicator">
+                        <ThinkingIndicator />
+                      </MessageScrollerItem>
+                    )}
+                    {displayError && (
+                      <MessageScrollerItem messageId="error">
+                        <Alert variant="destructive">
+                          <AlertDescription>{displayError}</AlertDescription>
+                        </Alert>
+                      </MessageScrollerItem>
+                    )}
+                  </MessageScrollerContent>
+                </MessageScrollerViewport>
+                <MessageScrollerButton />
+              </MessageScrollerRoot>
+            </MessageScrollerProvider>
+          </div>
+        )}
 
         <div className="page__composer">
           <InvestigateForm disabled={isStreaming} onSubmit={handleSubmit} />
@@ -213,6 +241,6 @@ export function App() {
       </main>
 
       {showAddProject && <AddProjectModal onAdd={handleAddProject} onClose={() => setShowAddProject(false)} />}
-    </div>
+    </SidebarProvider>
   );
 }

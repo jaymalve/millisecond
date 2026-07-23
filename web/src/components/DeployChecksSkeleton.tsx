@@ -1,21 +1,32 @@
-import { Skeleton } from "./Skeleton";
+import { Skeleton } from "./ui/skeleton";
+import { Item, ItemContent, ItemGroup, ItemMedia } from "./ui/item";
 
 /** Shown while fetching a selected deploy's per-route detail — approximates DeployChecks' header + row shape rather than a generic spinner. */
 export function DeployChecksSkeleton() {
   return (
-    <div className="deploy-checks">
-      <header className="deploy-checks__header">
-        <Skeleton width="110px" height="1.1em" />
-        <Skeleton width="64px" height="0.8em" />
+    <div className="flex flex-col gap-4">
+      <header className="flex items-baseline gap-2.5">
+        <Skeleton className="h-5 w-28" />
+        <Skeleton className="h-3.5 w-16" />
       </header>
-      <div className="deploy-checks__list">
-        <div className="deploy-check">
-          <Skeleton width="85%" />
-        </div>
-        <div className="deploy-check">
-          <Skeleton width="70%" />
-        </div>
-      </div>
+      <ItemGroup>
+        <Item variant="outline">
+          <ItemMedia variant="icon">
+            <Skeleton className="size-4 rounded-full" />
+          </ItemMedia>
+          <ItemContent>
+            <Skeleton className="h-4 w-3/4" />
+          </ItemContent>
+        </Item>
+        <Item variant="outline">
+          <ItemMedia variant="icon">
+            <Skeleton className="size-4 rounded-full" />
+          </ItemMedia>
+          <ItemContent>
+            <Skeleton className="h-4 w-3/5" />
+          </ItemContent>
+        </Item>
+      </ItemGroup>
     </div>
   );
 }

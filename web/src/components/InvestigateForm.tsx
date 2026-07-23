@@ -1,4 +1,6 @@
 import { useState, type FormEvent } from "react";
+import { Button } from "./ui/button";
+import { Input } from "./ui/input";
 
 interface InvestigateFormProps {
   disabled: boolean;
@@ -16,18 +18,19 @@ export function InvestigateForm({ disabled, onSubmit }: InvestigateFormProps) {
   }
 
   return (
-    <form className="investigate-form" onSubmit={handleSubmit}>
-      <input
+    <form className="mx-auto flex w-full max-w-[760px] gap-2" onSubmit={handleSubmit}>
+      <Input
         type="text"
         value={message}
         onChange={(e) => setMessage(e.target.value)}
         placeholder="Why did /api/orders get slower this week?"
         disabled={disabled}
         autoComplete="off"
+        className="h-9"
       />
-      <button type="submit" disabled={disabled || !message.trim()}>
+      <Button type="submit" disabled={disabled || !message.trim()} className="h-9">
         {disabled ? "Investigating…" : "Investigate"}
-      </button>
+      </Button>
     </form>
   );
 }

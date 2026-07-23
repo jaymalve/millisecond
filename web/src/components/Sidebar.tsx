@@ -1,11 +1,29 @@
+import { Circle, CircleCheck, Clock, Folder, Plus, TriangleAlert } from "lucide-react";
 import type { InvestigationRecord } from "../lib/history";
 import { formatRelativeTime } from "../lib/history";
 import type { Project } from "../lib/projects";
 import type { AlertSummary } from "../lib/alerts";
 import { getDeployStatus, type DeploySummary } from "../lib/deploys";
-import { Skeleton } from "./Skeleton";
+import {
+  Sidebar as SidebarPrimitive,
+  SidebarContent,
+  SidebarGroup,
+  SidebarGroupAction,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarHeader,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarMenuSkeleton,
+} from "./ui/sidebar";
 
-const DEPLOY_STATUS_ICON = { pending: "○", clean: "✓", regressed: "⚠" } as const;
+const DEPLOY_STATUS_ICON = { pending: Circle, clean: CircleCheck, regressed: TriangleAlert } as const;
+const DEPLOY_STATUS_CLASS = {
+  pending: "text-sidebar-foreground/40",
+  clean: "text-(--success)",
+  regressed: "text-(--danger)",
+} as const;
 
 interface SidebarProps {
   projects: Project[];
@@ -24,6 +42,22 @@ interface SidebarProps {
   disabled: boolean;
   onSelect: (id: string) => void;
   onNew: () => void;
+}
+
+function EmptyRow({ children }: { children: string }) {
+  return (
+    <p className="px-2 py-1.5 text-xs text-sidebar-foreground/50 group-data-[collapsible=icon]:hidden">{children}</p>
+  );
+}
+
+/** Two-line menu row (title + relative time) — the shape every Alerts/Deploys/History row shares. Hidden in icon-collapsed mode (the leading icon carries the row instead — two lines of text has no clean collapsed form). */
+function RowLabel({ title, time, mono = false }: { title: string; time: string; mono?: boolean }) {
+  return (
+    <span className="flex flex-col items-start gap-0.5 overflow-hidden group-data-[collapsible=icon]:hidden">
+      <span className={`w-full truncate ${mono ? "font-mono" : ""}`}>{title}</span>
+      <span className="text-xs text-sidebar-foreground/50">{time}</span>
+    </span>
+  );
 }
 
 export function Sidebar({
@@ -45,114 +79,147 @@ export function Sidebar({
   onNew,
 }: SidebarProps) {
   return (
-    <nav className="sidebar">
-      <button className="sidebar__new" onClick={onNew} disabled={disabled}>
-        + New investigation
-      </button>
+    <SidebarPrimitive collapsible="icon">
+      <SidebarHeader>
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton onClick={onNew} disabled={disabled} tooltip="New investigation">
+              <Plus />
+              <span>New investigation</span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
 
-      <div className="sidebar__section">
-        <div className="sidebar__section-header">
-          <span>Projects</span>
-          <button className="sidebar__add" onClick={onAddProjectClick} title="Add project">
-            +
-          </button>
-        </div>
-        {projects.map((project) => (
-          <button
-            key={project.id}
-            className={`sidebar__project ${project.id === activeProjectId ? "sidebar__project--active" : ""}`}
-            onClick={() => onSelectProject(project.id)}
-          >
-            {project.name}
-          </button>
-        ))}
-      </div>
+        <SidebarGroup>
+          <SidebarGroupLabel>Projects</SidebarGroupLabel>
+          <SidebarGroupAction onClick={onAddProjectClick} title="Add project">
+            <Plus />
+            <span className="sr-only">Add project</span>
+          </SidebarGroupAction>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {projects.map((project) => (
+                <SidebarMenuItem key={project.id}>
+                  <SidebarMenuButton
+                    isActive={project.id === activeProjectId}
+                    onClick={() => onSelectProject(project.id)}
+                    tooltip={project.name}
+                  >
+                    <Folder />
+                    <span>{project.name}</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
 
-      <div className="sidebar__section">
-        <div className="sidebar__section-header">
-          <span>Alerts</span>
-        </div>
-        <div className="sidebar__list">
-          {alerts.length === 0 && <p className="sidebar__empty">No alerts</p>}
-          {alerts.map((alert) => (
-            <button
-              key={alert.id}
-              className={`sidebar__item ${alert.id === selectedAlertId ? "sidebar__item--active" : ""}`}
-              onClick={() => onSelectAlert(alert.id)}
-              disabled={disabled}
-            >
-              <span className="sidebar__item-question">⚠ {alert.route}</span>
-              <span className="sidebar__item-time">{formatRelativeTime(alert.detectedAt)}</span>
-            </button>
-          ))}
-        </div>
-      </div>
+        <SidebarGroup>
+          <SidebarGroupLabel>Alerts</SidebarGroupLabel>
+          <SidebarGroupContent>
+            {alerts.length === 0 ? (
+              <EmptyRow>No alerts</EmptyRow>
+            ) : (
+              <SidebarMenu>
+                {alerts.map((alert) => (
+                  <SidebarMenuItem key={alert.id}>
+                    <SidebarMenuButton
+                      size="lg"
+                      isActive={alert.id === selectedAlertId}
+                      onClick={() => onSelectAlert(alert.id)}
+                      disabled={disabled}
+                      tooltip={alert.route}
+                    >
+                      <TriangleAlert className="text-(--danger)" />
+                      <RowLabel title={alert.route} time={formatRelativeTime(alert.detectedAt)} />
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            )}
+          </SidebarGroupContent>
+        </SidebarGroup>
 
-      <div className="sidebar__section">
-        <div className="sidebar__section-header">
-          <span>Deploys</span>
-        </div>
-        <div className="sidebar__list">
-          {deploysLoading && (
-            <>
-              <div className="sidebar__item">
-                <Skeleton width="70%" />
-              </div>
-              <div className="sidebar__item">
-                <Skeleton width="55%" />
-              </div>
-            </>
-          )}
-          {!deploysLoading && deploys.length === 0 && <p className="sidebar__empty">No deploys</p>}
-          {!deploysLoading &&
-            deploys.map((deploy) => {
-              const status = getDeployStatus(deploy);
+        <SidebarGroup>
+          <SidebarGroupLabel>Deploys</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {deploysLoading && (
+                <>
+                  <SidebarMenuItem>
+                    <SidebarMenuSkeleton showIcon />
+                  </SidebarMenuItem>
+                  <SidebarMenuItem>
+                    <SidebarMenuSkeleton showIcon />
+                  </SidebarMenuItem>
+                </>
+              )}
+              {!deploysLoading && deploys.length === 0 && (
+                <SidebarMenuItem>
+                  <EmptyRow>No deploys</EmptyRow>
+                </SidebarMenuItem>
+              )}
+              {!deploysLoading &&
+                deploys.map((deploy) => {
+                  const status = getDeployStatus(deploy);
+                  const StatusIcon = DEPLOY_STATUS_ICON[status];
+                  return (
+                    <SidebarMenuItem key={deploy.sha}>
+                      <SidebarMenuButton
+                        size="lg"
+                        isActive={deploy.sha === selectedDeploySha}
+                        onClick={() => onSelectDeploy(deploy.sha)}
+                        disabled={disabled}
+                        tooltip={deploy.sha.slice(0, 7)}
+                      >
+                        <StatusIcon className={DEPLOY_STATUS_CLASS[status]} />
+                        <RowLabel title={deploy.sha.slice(0, 7)} time={formatRelativeTime(deploy.deployedAt)} mono />
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  );
+                })}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+      </SidebarHeader>
+
+      <SidebarContent>
+        <SidebarGroup>
+          <SidebarGroupLabel>History</SidebarGroupLabel>
+          <SidebarGroupContent>
+            {history.length === 0 && <EmptyRow>No investigations yet</EmptyRow>}
+            {projects.map((project) => {
+              const projectHistory = history.filter((r) => r.projectId === project.id);
+              if (projectHistory.length === 0) return null;
               return (
-                <button
-                  key={deploy.sha}
-                  className={`sidebar__item ${deploy.sha === selectedDeploySha ? "sidebar__item--active" : ""}`}
-                  onClick={() => onSelectDeploy(deploy.sha)}
-                  disabled={disabled}
-                >
-                  <span className="sidebar__item-question">
-                    <span className={`deploy-status deploy-status--${status}`}>{DEPLOY_STATUS_ICON[status]}</span>{" "}
-                    {deploy.sha.slice(0, 7)}
-                  </span>
-                  <span className="sidebar__item-time">{formatRelativeTime(deploy.deployedAt)}</span>
-                </button>
+                <div key={project.id} className="mb-2">
+                  {projects.length > 1 && (
+                    <div className="px-2 py-1 text-[0.65rem] tracking-wide text-sidebar-foreground/40 uppercase group-data-[collapsible=icon]:hidden">
+                      {project.name}
+                    </div>
+                  )}
+                  <SidebarMenu>
+                    {projectHistory.map((record) => (
+                      <SidebarMenuItem key={record.id}>
+                        <SidebarMenuButton
+                          size="lg"
+                          isActive={record.id === selectedId}
+                          onClick={() => onSelect(record.id)}
+                          disabled={disabled}
+                          tooltip={record.question}
+                        >
+                          <Clock />
+                          <RowLabel title={record.question} time={formatRelativeTime(record.createdAt)} />
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    ))}
+                  </SidebarMenu>
+                </div>
               );
             })}
-        </div>
-      </div>
-
-      <div className="sidebar__section sidebar__section--grow">
-        <div className="sidebar__section-header">
-          <span>History</span>
-        </div>
-        <div className="sidebar__list">
-          {history.length === 0 && <p className="sidebar__empty">No investigations yet</p>}
-          {projects.map((project) => {
-            const projectHistory = history.filter((r) => r.projectId === project.id);
-            if (projectHistory.length === 0) return null;
-            return (
-              <div key={project.id} className="sidebar__group">
-                {projects.length > 1 && <div className="sidebar__group-label">{project.name}</div>}
-                {projectHistory.map((record) => (
-                  <button
-                    key={record.id}
-                    className={`sidebar__item ${record.id === selectedId ? "sidebar__item--active" : ""}`}
-                    onClick={() => onSelect(record.id)}
-                    disabled={disabled}
-                  >
-                    <span className="sidebar__item-question">{record.question}</span>
-                    <span className="sidebar__item-time">{formatRelativeTime(record.createdAt)}</span>
-                  </button>
-                ))}
-              </div>
-            );
-          })}
-        </div>
-      </div>
-    </nav>
+          </SidebarGroupContent>
+        </SidebarGroup>
+      </SidebarContent>
+    </SidebarPrimitive>
   );
 }
