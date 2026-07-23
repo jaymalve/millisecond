@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { ChevronRight } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "./ui/collapsible";
+import { Marker, MarkerContent } from "./ui/marker";
 
 const TITLE_PATTERN = /^\*\*(.+?)\*\*\n*/;
 
@@ -14,15 +15,18 @@ function splitTitle(text: string): { label: string; body: string } {
   return { label: firstLine.length > 60 ? firstLine.slice(0, 60) + "…" : firstLine || "Reasoning", body: text };
 }
 
-export function ReasoningBlock({ text }: { text: string }) {
+/** `active` is true only while this block is still receiving reasoning deltas — the label shimmers like Cursor/Claude Code's live action verb, then settles once the model moves on to the next block. */
+export function ReasoningBlock({ text, active = false }: { text: string; active?: boolean }) {
   const [expanded, setExpanded] = useState(true);
   const { label, body } = splitTitle(text);
 
   return (
     <Collapsible open={expanded} onOpenChange={setExpanded} className="flex flex-col gap-1">
-      <CollapsibleTrigger className="group inline-flex max-w-full items-center gap-1.5 text-xs text-muted-foreground outline-none hover:text-foreground">
-        <span className="truncate">{label}</span>
-        <ChevronRight className="size-3.5 shrink-0 transition-transform duration-150 group-data-[panel-open]:rotate-90" />
+      <CollapsibleTrigger className="group w-full text-left outline-none">
+        <Marker className="text-xs group-hover:text-foreground">
+          <MarkerContent className={active ? "shimmer" : undefined}>{label}</MarkerContent>
+          <ChevronRight className="ml-auto size-3.5 shrink-0 transition-transform duration-150 group-data-[panel-open]:rotate-90" />
+        </Marker>
       </CollapsibleTrigger>
       <CollapsibleContent className="px-1 text-[0.82rem] leading-relaxed whitespace-pre-wrap text-muted-foreground italic">
         {body}

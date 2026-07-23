@@ -47,6 +47,11 @@ export function App() {
   const selectedRecord = selectedId ? history.find((r) => r.id === selectedId) : undefined;
   const displayItems = selectedAlertItems ?? (selectedRecord ? selectedRecord.items : state.status !== "idle" ? state.items : []);
   const displayError = selectedRecord?.status === "error" ? selectedRecord.errorMessage : state.status === "error" ? state.message : undefined;
+  // A fresh investigation actually streaming live — as opposed to a past
+  // record or alert transcript being replayed. Only this case has an
+  // "active" item still receiving deltas worth shimmering.
+  const isLive = isStreaming && !selectedRecord && !selectedAlertId;
+  const activeItemId = isLive ? displayItems[displayItems.length - 1]?.id : undefined;
 
   // Fetching the alert list from the agent's API on mount is a genuine
   // "sync with an external system" case for useEffect — there's no user
@@ -214,8 +219,8 @@ export function App() {
               <MessageScrollerRoot>
                 <MessageScrollerViewport>
                   <MessageScrollerContent className="mx-auto w-full max-w-[760px] px-8 py-6">
-                    {displayItems.length > 0 && <Transcript items={displayItems} />}
-                    {isStreaming && !selectedRecord && !selectedAlertId && (
+                    {displayItems.length > 0 && <Transcript items={displayItems} activeItemId={activeItemId} />}
+                    {isLive && (
                       <MessageScrollerItem messageId="thinking-indicator">
                         <ThinkingIndicator />
                       </MessageScrollerItem>
