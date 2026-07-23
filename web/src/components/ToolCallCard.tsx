@@ -28,11 +28,8 @@ export function ToolCallCard({ item }: { item: ToolItem }) {
       className="overflow-hidden rounded-lg border border-border bg-card"
     >
       <CollapsibleTrigger className="group flex w-full items-center gap-2 px-3 py-2 font-mono text-xs outline-none">
-        <Badge
-          variant="outline"
-          className={`shrink-0 ${STATUS_CLASS[item.status]} ${item.status === "running" ? "animate-pulse" : ""}`}
-        >
-          {STATUS_LABEL[item.status]}
+        <Badge variant="outline" className={`shrink-0 ${STATUS_CLASS[item.status]}`}>
+          <span className={item.status === "running" ? "shimmer" : undefined}>{STATUS_LABEL[item.status]}</span>
         </Badge>
         <span className="font-semibold text-foreground">{item.toolName}</span>
         <span className="min-w-0 flex-1 truncate text-muted-foreground">{summarize(item.args)}</span>
