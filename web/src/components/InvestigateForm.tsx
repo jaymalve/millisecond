@@ -1,6 +1,8 @@
 import { useState, type FormEvent } from "react";
+import { ArrowUp } from "lucide-react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
+import { Spinner } from "./ui/spinner";
 
 interface InvestigateFormProps {
   disabled: boolean;
@@ -28,8 +30,14 @@ export function InvestigateForm({ disabled, onSubmit }: InvestigateFormProps) {
         autoComplete="off"
         className="h-9"
       />
-      <Button type="submit" disabled={disabled || !message.trim()} className="h-9">
-        {disabled ? "Investigating…" : "Investigate"}
+      <Button
+        type="submit"
+        size="icon-lg"
+        disabled={disabled || !message.trim()}
+        className="h-9 bg-white text-black hover:bg-white/90"
+      >
+        {disabled ? <Spinner /> : <ArrowUp />}
+        <span className="sr-only">{disabled ? "Investigating…" : "Investigate"}</span>
       </Button>
     </form>
   );
