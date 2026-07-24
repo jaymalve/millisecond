@@ -44,7 +44,11 @@ const GraphQLResponseSchema = z.object({
     })
     .nullable()
     .optional(),
-  errors: z.array(z.object({ message: z.string() })).optional(),
+  // `.nullish()`, not `.optional()` — Cloudflare's GraphQL API sends an
+  // explicit `"errors": null` on a clean response, not an absent key; see
+  // kvOperations.ts, where this same field caused every successful
+  // response to fail Zod parsing until it was made nullable there too.
+  errors: z.array(z.object({ message: z.string() })).nullish(),
 });
 
 /**

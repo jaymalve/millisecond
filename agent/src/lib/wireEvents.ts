@@ -28,6 +28,18 @@ export function toWireEvent(chunk: ChunkType): WireEvent | null {
         result: chunk.payload.result,
         isError: chunk.payload.isError,
       };
+    // A thrown tool execute() surfaces as its own chunk type, not
+    // "tool-result" with isError — without this case the failure was
+    // silently dropped by the switch's default, invisible to the model's
+    // caller even though the model itself still saw and reasoned about it.
+    case "tool-error":
+      return {
+        type: "tool-result",
+        toolCallId: chunk.payload.toolCallId,
+        toolName: chunk.payload.toolName,
+        result: chunk.payload.error instanceof Error ? chunk.payload.error.message : String(chunk.payload.error),
+        isError: true,
+      };
     case "reasoning-delta":
       return { type: "reasoning-delta", id: chunk.payload.id, text: chunk.payload.text };
     case "text-delta":
