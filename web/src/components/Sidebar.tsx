@@ -1,6 +1,6 @@
 import { Circle, CircleCheck, Clock, Folder, Plus, TriangleAlert } from "lucide-react";
-import type { InvestigationRecord } from "../lib/history";
-import { formatRelativeTime } from "../lib/history";
+import type { ConversationSummary } from "../lib/conversations";
+import { formatRelativeTime } from "../lib/time";
 import type { Project } from "../lib/projects";
 import type { AlertSummary } from "../lib/alerts";
 import { getDeployStatus, type DeploySummary } from "../lib/deploys";
@@ -37,7 +37,7 @@ interface SidebarProps {
   deploysLoading: boolean;
   selectedDeploySha: string | null;
   onSelectDeploy: (sha: string) => void;
-  history: InvestigationRecord[];
+  conversations: ConversationSummary[];
   selectedId: string | null;
   disabled: boolean;
   onSelect: (id: string) => void;
@@ -72,7 +72,7 @@ export function Sidebar({
   deploysLoading,
   selectedDeploySha,
   onSelectDeploy,
-  history,
+  conversations,
   selectedId,
   disabled,
   onSelect,
@@ -187,10 +187,10 @@ export function Sidebar({
         <SidebarGroup>
           <SidebarGroupLabel>History</SidebarGroupLabel>
           <SidebarGroupContent>
-            {history.length === 0 && <EmptyRow>No investigations yet</EmptyRow>}
+            {conversations.length === 0 && <EmptyRow>No conversations yet</EmptyRow>}
             {projects.map((project) => {
-              const projectHistory = history.filter((r) => r.projectId === project.id);
-              if (projectHistory.length === 0) return null;
+              const projectConversations = conversations.filter((c) => c.projectId === project.id);
+              if (projectConversations.length === 0) return null;
               return (
                 <div key={project.id} className="mb-2">
                   {projects.length > 1 && (
@@ -199,17 +199,17 @@ export function Sidebar({
                     </div>
                   )}
                   <SidebarMenu>
-                    {projectHistory.map((record) => (
-                      <SidebarMenuItem key={record.id}>
+                    {projectConversations.map((conversation) => (
+                      <SidebarMenuItem key={conversation.id}>
                         <SidebarMenuButton
                           size="lg"
-                          isActive={record.id === selectedId}
-                          onClick={() => onSelect(record.id)}
+                          isActive={conversation.id === selectedId}
+                          onClick={() => onSelect(conversation.id)}
                           disabled={disabled}
-                          tooltip={record.question}
+                          tooltip={conversation.title}
                         >
                           <Clock />
-                          <RowLabel title={record.question} time={formatRelativeTime(record.createdAt)} />
+                          <RowLabel title={conversation.title} time={formatRelativeTime(conversation.updatedAt)} />
                         </SidebarMenuButton>
                       </SidebarMenuItem>
                     ))}

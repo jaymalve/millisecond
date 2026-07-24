@@ -3,6 +3,7 @@ import type { WireEvent } from "./wireEvents";
 export type TranscriptItem =
   | { kind: "reasoning"; id: string; text: string }
   | { kind: "answer"; id: string; text: string }
+  | { kind: "question"; id: string; text: string }
   | {
       kind: "tool";
       id: string;
@@ -19,7 +20,10 @@ export type InvestigationState =
   | { status: "done"; items: TranscriptItem[] }
   | { status: "error"; items: TranscriptItem[]; message: string };
 
-export type InvestigationAction = { type: "start" } | { type: "event"; event: WireEvent } | { type: "reset" };
+export type InvestigationAction =
+  | { type: "start"; question: string }
+  | { type: "event"; event: WireEvent }
+  | { type: "reset" };
 
 export const initialState: InvestigationState = { status: "idle" };
 
@@ -31,7 +35,10 @@ export function investigationReducer(
     return initialState;
   }
   if (action.type === "start") {
-    return { status: "streaming", items: [] };
+    // Seeded with the question itself — the model's own output stream has
+    // no "here's what was asked" event, so the turn boundary in a
+    // multi-turn conversation has to come from the client, not the wire.
+    return { status: "streaming", items: [{ kind: "question", id: crypto.randomUUID(), text: action.question }] };
   }
   if (state.status !== "streaming") return state;
 

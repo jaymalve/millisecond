@@ -3,6 +3,7 @@ import { cors } from "hono/cors";
 import type { Env } from "./env";
 import { investigateRoute } from "./routes/investigate";
 import { listAlertsRoute, getAlertRoute } from "./routes/alerts";
+import { listConversationsRoute, getConversationRoute } from "./routes/conversations";
 import { createDeployCheckRoute, listDeploysRoute, getDeployRoute } from "./routes/deploys";
 import { runWatchdogCheck } from "./watchdog/runWatchdogCheck";
 
@@ -14,10 +15,12 @@ export { PostDeployCheckWorkflow } from "./postDeploy/postDeployWorkflow";
 const app = new Hono<{ Bindings: Env }>();
 
 app.use("/api/*", cors());
-app.get("/", (c) => c.json({ ok: true, routes: ["/api/investigate", "/api/alerts", "/api/deploys"] }));
+app.get("/", (c) => c.json({ ok: true, routes: ["/api/investigate", "/api/alerts", "/api/conversations", "/api/deploys"] }));
 app.post("/api/investigate", investigateRoute);
 app.get("/api/alerts", listAlertsRoute);
 app.get("/api/alerts/:id", getAlertRoute);
+app.get("/api/conversations", listConversationsRoute);
+app.get("/api/conversations/:id", getConversationRoute);
 app.post("/api/deploys", createDeployCheckRoute);
 app.get("/api/deploys", listDeploysRoute);
 app.get("/api/deploys/:sha", getDeployRoute);

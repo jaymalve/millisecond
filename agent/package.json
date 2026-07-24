@@ -14,6 +14,7 @@
     "@mastra/braintrust": "^1.0.0",
     "@mastra/cloudflare-d1": "^1.0.4",
     "@mastra/core": "^1.0.0",
+    "@mastra/memory": "^1.23.1",
     "@mastra/observability": "^1.0.0",
     "braintrust": "^2.2.2",
     "hono": "^4.6.0",

@@ -2,16 +2,23 @@ import type { WireEvent } from "./wireEvents";
 
 const API_URL = import.meta.env.VITE_AGENT_API_URL;
 
-/** POSTs a message to the agent and calls onEvent for each NDJSON WireEvent as it streams in. */
+/**
+ * POSTs a message to the agent and calls onEvent for each NDJSON WireEvent
+ * as it streams in. `conversationId` is the Mastra memory thread — sending
+ * the same id on every turn of a chat is what lets the agent recall prior
+ * turns instead of starting fresh on every message.
+ */
 export async function investigate(
   message: string,
+  conversationId: string,
+  projectId: string,
   onEvent: (event: WireEvent) => void,
   signal?: AbortSignal,
 ): Promise<void> {
   const res = await fetch(`${API_URL}/api/investigate`, {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ message }),
+    body: JSON.stringify({ message, conversationId, projectId }),
     signal,
   });
 

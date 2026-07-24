@@ -3,6 +3,7 @@ import type { WireEvent } from "./wireEvents";
 export type TranscriptItem =
   | { kind: "reasoning"; id: string; text: string }
   | { kind: "answer"; id: string; text: string }
+  | { kind: "question"; id: string; text: string }
   | {
       kind: "tool";
       id: string;

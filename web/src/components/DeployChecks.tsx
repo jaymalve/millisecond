@@ -1,5 +1,5 @@
 import { CircleCheck, TriangleAlert } from "lucide-react";
-import { formatRelativeTime } from "../lib/history";
+import { formatRelativeTime } from "../lib/time";
 import type { DeployDetail } from "../lib/deploys";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";

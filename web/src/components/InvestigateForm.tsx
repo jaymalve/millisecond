@@ -17,6 +17,7 @@ export function InvestigateForm({ disabled, onSubmit }: InvestigateFormProps) {
     const trimmed = message.trim();
     if (!trimmed || disabled) return;
     onSubmit(trimmed);
+    setMessage("");
   }
 
   return (

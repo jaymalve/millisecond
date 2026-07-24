@@ -2,7 +2,7 @@ import { useEffect, useReducer, useRef, useState } from "react";
 import { investigationReducer, initialState, type InvestigationState, type TranscriptItem } from "./state";
 import { investigate } from "./api";
 import type { WireEvent } from "./wireEvents";
-import { loadHistory, saveInvestigation, type InvestigationRecord } from "./lib/history";
+import { fetchConversations, fetchConversation, type ConversationSummary } from "./lib/conversations";
 import { loadProjects, saveProjects, type Project } from "./lib/projects";
 import { fetchAlerts, fetchAlert, type AlertSummary, type AlertDetail } from "./lib/alerts";
 import { fetchDeploys, fetchDeploy, type DeploySummary, type DeployDetail } from "./lib/deploys";
@@ -26,13 +26,19 @@ import { Alert, AlertDescription } from "./components/ui/alert";
 
 export function App() {
   const [state, dispatch] = useReducer(investigationReducer, initialState);
-  // Lazy init reads localStorage once on first render — no useEffect needed
-  // for what's otherwise just "load initial state."
-  const [history, setHistory] = useState<InvestigationRecord[]>(() => loadHistory());
   const [projects, setProjects] = useState<Project[]>(() => loadProjects());
   const [activeProjectId, setActiveProjectId] = useState(() => projects[0]?.id ?? "target");
   const [showAddProject, setShowAddProject] = useState(false);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  // The active conversation thread — sent to the agent as its Mastra
+  // memory thread on every turn, so a null id means "no chat started
+  // yet," not "history entry not selected."
+  const [conversationId, setConversationId] = useState<string | null>(null);
+  // Items from turns before whichever one `state` currently represents —
+  // folded in once a turn completes so a resumed or multi-turn
+  // conversation renders as one continuous transcript.
+  const [conversationItems, setConversationItems] = useState<TranscriptItem[]>([]);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [conversations, setConversations] = useState<ConversationSummary[]>([]);
   const [alerts, setAlerts] = useState<AlertSummary[]>([]);
   const [selectedAlertId, setSelectedAlertId] = useState<string | null>(null);
   const [selectedAlertItems, setSelectedAlertItems] = useState<TranscriptItem[] | null>(null);
@@ -44,19 +50,20 @@ export function App() {
   const outputRef = useRef<HTMLDivElement>(null);
 
   const isStreaming = state.status === "streaming";
-  const selectedRecord = selectedId ? history.find((r) => r.id === selectedId) : undefined;
-  const displayItems = selectedAlertItems ?? (selectedRecord ? selectedRecord.items : state.status !== "idle" ? state.items : []);
-  const displayError = selectedRecord?.status === "error" ? selectedRecord.errorMessage : state.status === "error" ? state.message : undefined;
-  // A fresh investigation actually streaming live — as opposed to a past
-  // record or alert transcript being replayed. Only this case has an
-  // "active" item still receiving deltas worth shimmering.
-  const isLive = isStreaming && !selectedRecord && !selectedAlertId;
+  const displayItems = selectedAlertItems ?? [...conversationItems, ...(state.status !== "idle" ? state.items : [])];
+  const displayError = selectedAlertId ? undefined : state.status === "error" ? state.message : submitError;
+  const isLive = isStreaming && !selectedAlertId;
   const activeItemId = isLive ? displayItems[displayItems.length - 1]?.id : undefined;
 
-  // Fetching the alert list from the agent's API on mount is a genuine
-  // "sync with an external system" case for useEffect — there's no user
-  // event that causes it, it's just what's already there server-side.
+  // Fetching lists from the agent's API on mount is a genuine "sync with
+  // an external system" case for useEffect — there's no user event that
+  // causes it, it's just what's already there server-side.
   useEffect(() => {
+    fetchConversations()
+      .then(setConversations)
+      .catch(() => {
+        /* Sidebar history is a nice-to-have, not worth blocking the rest of the app over. */
+      });
     fetchAlerts()
       .then(setAlerts)
       .catch(() => {
@@ -71,25 +78,35 @@ export function App() {
   }, []);
 
   async function handleSubmit(question: string) {
-    setSelectedId(null);
     setSelectedAlertId(null);
     setSelectedAlertItems(null);
     setSelectedDeploySha(null);
     setSelectedDeployDetail(null);
     setSelectedDeployError(null);
-    dispatch({ type: "start" });
+    setSubmitError(null);
 
-    // Mirrors the reducer's own logic to capture the final transcript for
-    // persistence — reuses investigationReducer itself (it's pure) rather
-    // than duplicating the event-handling switch.
-    let local: InvestigationState = { status: "streaming", items: [] };
+    // Minted once, on the first turn of a chat, then resent on every
+    // later turn — this is what makes the agent treat a follow-up
+    // question as a continuation instead of a fresh conversation.
+    const activeConversationId = conversationId ?? crypto.randomUUID();
+    if (!conversationId) setConversationId(activeConversationId);
+
+    dispatch({ type: "start", question });
+
+    // Mirrors the reducer's own logic to capture the finished turn for
+    // folding into conversationItems — reuses investigationReducer itself
+    // (it's pure) rather than duplicating its event-handling logic.
+    let local: InvestigationState = {
+      status: "streaming",
+      items: [{ kind: "question", id: crypto.randomUUID(), text: question }],
+    };
     const onEvent = (event: WireEvent) => {
       local = investigationReducer(local, { type: "event", event });
       dispatch({ type: "event", event });
     };
 
     try {
-      await investigate(question, onEvent);
+      await investigate(question, activeConversationId, activeProjectId, onEvent);
     } catch (err) {
       const event: WireEvent = { type: "error", message: (err as Error).message };
       local = investigationReducer(local, { type: "event", event });
@@ -97,40 +114,49 @@ export function App() {
     }
 
     if (local.status === "done" || local.status === "error") {
-      const record: InvestigationRecord = {
-        id: crypto.randomUUID(),
-        projectId: activeProjectId,
-        question,
-        items: local.items,
-        status: local.status,
-        errorMessage: local.status === "error" ? local.message : undefined,
-        createdAt: Date.now(),
-      };
-      setHistory((prev) => saveInvestigation(record, prev));
+      const finishedItems = local.items;
+      setConversationItems((prev) => [...prev, ...finishedItems]);
+      if (local.status === "error") setSubmitError(local.message);
+      dispatch({ type: "reset" });
+      fetchConversations()
+        .then(setConversations)
+        .catch(() => {
+          /* Sidebar history is a nice-to-have, not worth blocking the rest of the app over. */
+        });
     }
   }
 
   function handleNew() {
-    setSelectedId(null);
     setSelectedAlertId(null);
     setSelectedAlertItems(null);
     setSelectedDeploySha(null);
     setSelectedDeployDetail(null);
     setSelectedDeployError(null);
+    setConversationId(null);
+    setConversationItems([]);
+    setSubmitError(null);
     dispatch({ type: "reset" });
   }
 
-  function handleSelectHistory(id: string) {
+  async function handleSelectConversation(id: string) {
     setSelectedAlertId(null);
     setSelectedAlertItems(null);
     setSelectedDeploySha(null);
     setSelectedDeployDetail(null);
     setSelectedDeployError(null);
-    setSelectedId(id);
+    setSubmitError(null);
+    dispatch({ type: "reset" });
+    setConversationId(id);
+    try {
+      const detail = await fetchConversation(id);
+      setConversationItems(detail.items);
+    } catch {
+      setConversationItems([]);
+    }
   }
 
   async function handleSelectAlert(id: string) {
-    setSelectedId(null);
+    setConversationId(null);
     setSelectedAlertId(id);
     setSelectedAlertItems(null);
     setSelectedDeploySha(null);
@@ -145,7 +171,7 @@ export function App() {
   }
 
   async function handleSelectDeploy(sha: string) {
-    setSelectedId(null);
+    setConversationId(null);
     setSelectedAlertId(null);
     setSelectedAlertItems(null);
     setSelectedDeploySha(sha);
@@ -184,10 +210,10 @@ export function App() {
         deploysLoading={deploysLoading}
         selectedDeploySha={selectedDeploySha}
         onSelectDeploy={handleSelectDeploy}
-        history={history}
-        selectedId={selectedId}
+        conversations={conversations}
+        selectedId={conversationId}
         disabled={isStreaming}
-        onSelect={handleSelectHistory}
+        onSelect={handleSelectConversation}
         onNew={handleNew}
       />
       <main className="page">

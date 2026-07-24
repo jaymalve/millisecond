@@ -26,13 +26,17 @@ export function createMastra(env: Env): Mastra {
     apiKey: env.BRAINTRUST_API_KEY,
   });
 
+  // Shared with the agent's Memory below — both the Mastra instance and
+  // the investigator agent read/write threads through the same D1-backed
+  // store, namespaced away from target/'s own `spans` table via the
+  // tablePrefix. Investigation traces themselves go to Braintrust below,
+  // not here — D1 storage doesn't support persisting the observability
+  // domain.
+  const storage = new D1Store({ id: "millisecond-agent-storage", binding: env.TARGET_DB, tablePrefix: "mastra_" });
+
   return new Mastra({
-    agents: { investigator: createInvestigatorAgent(env) },
-    // Mastra's own thread/message storage, namespaced away from target/'s
-    // `spans` table in the same D1 database. Investigation traces
-    // themselves go to Braintrust below, not here — D1 storage doesn't
-    // support persisting the observability domain.
-    storage: new D1Store({ id: "millisecond-agent-storage", binding: env.TARGET_DB, tablePrefix: "mastra_" }),
+    agents: { investigator: createInvestigatorAgent(env, storage) },
+    storage,
     observability: new Observability({
       configs: {
         braintrust: {

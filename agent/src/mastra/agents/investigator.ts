@@ -1,5 +1,7 @@
 import { Agent } from "@mastra/core/agent";
 import { createOpenAI } from "@ai-sdk/openai";
+import { Memory } from "@mastra/memory";
+import type { D1Store } from "@mastra/cloudflare-d1";
 import type { Env } from "../../env";
 import { investigationTools } from "../tools";
 
@@ -30,13 +32,37 @@ Tool-call economy applies no matter which skill you load — Cloudflare's free p
  * deploy-time validation pass runs this module's top level before any
  * request (and its bindings/secrets) exists, so anything that needs a
  * real `env` value has to be deferred until a request actually arrives.
+ *
+ * `storage` is the same D1Store instance the Mastra instance itself uses
+ * (see mastra/index.ts) — passed in rather than constructed here so
+ * there's exactly one D1Store per request, not two independently
+ * managing the same `mastra_*` tables.
  */
-export function createInvestigatorAgent(env: Env): Agent {
+export function createInvestigatorAgent(env: Env, storage: D1Store): Agent {
   // Explicit provider instance rather than Mastra's "openai/gpt-5.5"
   // string shorthand: that shorthand resolves the key from process.env,
   // which Workers doesn't populate from wrangler secrets without extra
   // wiring. Passing the key straight through avoids that pitfall.
   const openai = createOpenAI({ apiKey: env.OPENAI_API_KEY });
+
+  // Recency-window recall only — no vector store configured, so semantic
+  // recall is explicitly off rather than silently inert. threadId/resourceId
+  // are supplied per-call from investigate.ts (one thread per browser
+  // conversation), not fixed here.
+  //
+  // The `as unknown as` casts below aren't papering over a real mismatch:
+  // @mastra/memory depends on zod v4 directly while the rest of this
+  // package is on zod v3, so bun's isolated installer resolves two
+  // physical copies of @mastra/core (one per zod major). Memory and
+  // Agent are structurally identical either way — they only call each
+  // other's public storage/memory methods, never touch private fields
+  // across that boundary — but TypeScript treats the two copies'
+  // classes as nominally distinct. Confirmed via `bun pm ls`/lockfile
+  // inspection, not a guess.
+  const memory = new Memory({
+    storage: storage as unknown as NonNullable<ConstructorParameters<typeof Memory>[0]>["storage"],
+    options: { lastMessages: 20, semanticRecall: false },
+  });
 
   return new Agent({
     id: "investigator",
@@ -44,5 +70,6 @@ export function createInvestigatorAgent(env: Env): Agent {
     instructions: buildSystemPrompt(),
     model: openai("gpt-5.5"),
     tools: investigationTools,
+    memory: memory as unknown as ConstructorParameters<typeof Agent>[0]["memory"],
   });
 }
