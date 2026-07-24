@@ -5,8 +5,11 @@ import { listDeploysTool } from "./deploys";
 import { getDiffTool } from "./diff";
 import { getTraceSpansTool } from "./spans";
 import { getCostEstimateTool } from "./cost";
+import { getKvOperationsTool } from "./kvOperations";
+import { loadSkillTool } from "./skills";
 
 export const investigationTools = {
+  loadSkill: loadSkillTool,
   getRouteMetrics: getRouteMetricsTool,
   getMetrics: getMetricsTool,
   findRegressionWindow: findRegressionWindowTool,
@@ -14,4 +17,5 @@ export const investigationTools = {
   getDiff: getDiffTool,
   getTraceSpans: getTraceSpansTool,
   getCostEstimate: getCostEstimateTool,
+  getKvOperations: getKvOperationsTool,
 };

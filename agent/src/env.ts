@@ -7,6 +7,7 @@ export interface Env {
   CF_API_TOKEN: string;
   CF_ACCOUNT_ID: string;
   TARGET_SCRIPT_NAME: string;
+  TARGET_KV_NAMESPACE_ID: string;
   GITHUB_OWNER: string;
   GITHUB_REPO: string;
   GITHUB_TOKEN?: string;

@@ -12,15 +12,25 @@ investigates performance regressions in `target/`.
   instance (agent registry + Braintrust observability config) from an
   explicit `Env`. This is the only file that constructs `new Mastra({...})`.
 - `src/mastra/agents/investigator.ts` — `createInvestigatorAgent(env)`:
-  the agent definition (instructions, model, tool registry), also built
-  from an explicit `Env` rather than a module-scope singleton.
+  the agent definition (a slim, always-present base prompt, model, tool
+  registry), also built from an explicit `Env` rather than a
+  module-scope singleton.
+- `src/mastra/skills/*.ts` — one file per domain playbook (tool order,
+  evidence bar, final-answer shape), each exporting a single template
+  string, registered by name in `src/mastra/skills/index.ts`. The base
+  prompt does not contain this guidance; the agent fetches it via the
+  `loadSkill` tool once it knows which domain a question falls into. See
+  [`architecture/agent-skills.md`](../architecture/agent-skills.md) for
+  why this is split out instead of one growing system prompt.
 - `src/mastra/tools/*.ts` — one file per tool, each a `createTool` call
   with a Zod input/output schema. Tool logic (the actual fetch/query/calc)
   lives in the same file as its schema — there's exactly one thing calling
   it, so splitting them apart would be indirection, not clarity.
   `getRouteMetrics`/`findRegressionWindow` also export their underlying
   plain functions, since the watchdog (below) needs to call them without
-  going through an LLM turn.
+  going through an LLM turn. `src/mastra/tools/skills.ts` is the one
+  exception that isn't a data-fetching tool — it's `loadSkill`, reading
+  from the skills registry above rather than an external source.
 - `src/watchdog/` — the scheduled, autonomous half of the agent. See its
   own section below.
 - `src/routes/alerts.ts` — `GET /api/alerts` (list) and `GET

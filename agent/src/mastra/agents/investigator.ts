@@ -17,22 +17,12 @@ The current time is ${now} (ISO 8601, UTC). Use this as the reference point for 
 
 You are running non-interactively: no one will see or respond to a mid-investigation question. Never stop to ask "would you like me to proceed?" or similar — always use your tools to gather as much evidence as you can and give your best final answer in one pass. A hedged, evidence-based answer is fine when the data is genuinely inconclusive; stopping to ask permission before doing the work is not.
 
-Given a question about a performance or cost regression, gather real evidence before concluding anything. You have seven tools:
-- getRouteMetrics: per-route request count, error count, and P50/P99 wall-time, bucketed in 5-minute windows from real request spans — use this for anything route-specific ("/api/orders", "the orders endpoint," etc.)
-- getMetrics: whole-worker (not per-route) hourly CPU/wall-time and request/error totals from Cloudflare's own analytics — use this alongside getCostEstimate for cost/CPU-billing context, not for isolating a single route's behavior
-- findRegressionWindow: deterministic changepoint detection over a numeric series you extracted from getRouteMetrics or getMetrics
-- listDeploys / getDiff: commit history and diffs for the target worker
-- getTraceSpans: per-route request waterfalls, to see which internal operation got slower
-- getCostEstimate: prices out a CPU-ms delta
+Start every investigation by calling loadSkill with whichever domain best matches the question — its tool description lists the available skills and what each one covers. Follow that skill's tool order and evidence bar rather than improvising from tool descriptions alone; it exists precisely because that guidance doesn't fit every kind of question equally.
 
-Investigate in this rough order: pull route-specific metrics with getRouteMetrics, find the regression window, list deploys and find the one that lines up with the window, pull its diff, pull trace spans from before and after the window to see which span grew, then cross-reference the diff against the span that grew. Only give a final answer once you have evidence from at least getRouteMetrics + listDeploys + getTraceSpans.
-
-You have a limited budget of external tool calls (Cloudflare's free plan caps subrequests per invocation) — be economical:
+Tool-call economy applies no matter which skill you load — Cloudflare's free plan caps subrequests per invocation, so be economical:
 - Routes are exact strings, always starting with /api/ (e.g. /api/orders, /api/products) — never guess a variant. If someone says "the orders endpoint" or "/orders," normalize it to /api/orders yourself before your first call; don't try the literal phrasing first and correct course later.
 - Never retry a tool with a trivially different version of the same arguments (a trailing slash, a slightly shifted time range) hoping for a different result. If a call returns empty, that's an answer — either broaden the time window once, deliberately, or move on with what you have.
-- Call each distinct (tool, arguments) combination at most once per investigation.
-
-Your final answer must include: the root cause in one sentence, the evidence chain that supports it (cite specific numbers, spans, and the commit), the estimated cost impact, and a concrete proposed code fix. If the evidence doesn't clearly support a conclusion, say so explicitly rather than guessing — but always finish with a final answer, never a question.`;
+- Call each distinct (tool, arguments) combination at most once per investigation, including loadSkill itself.`;
 }
 
 /**

@@ -7,6 +7,10 @@ compatibility_flags = ["nodejs_compat"]
 TARGET_SCRIPT_NAME = "millisecond-target"
 GITHUB_OWNER = "jaymalve"
 GITHUB_REPO = "millisecond"
+# Same id as target/wrangler.toml's CACHE binding — the get-kv-operations
+# tool queries this namespace's analytics via the GraphQL API, which
+# addresses namespaces by id rather than by binding name.
+TARGET_KV_NAMESPACE_ID = "d25e1dc6d03b44bfb30b659e8421e7f1"
 
 # Cheap regression check every 30 minutes; only triggers a full (LLM)
 # investigation when it actually finds something — see

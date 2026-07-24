@@ -10,8 +10,11 @@ per-package conventions.
   `cloudflare:workers` env-access pattern this forces.
 - [d1-schema.md](d1-schema.md) — all four tables across the shared
   database, who owns each, who reads/writes it.
-- [tool-agent-design.md](tool-agent-design.md) — the seven-tool registry,
+- [tool-agent-design.md](tool-agent-design.md) — the tool registry,
   model/provider setup, and the system prompt's non-obvious constraints.
+- [agent-skills.md](agent-skills.md) — why domain-specific investigation
+  playbooks (tool order, evidence bar) live in a `loadSkill`-fetched
+  registry instead of a single growing system prompt.
 - [streaming-pipeline.md](streaming-pipeline.md) — the three narrowing
   steps from Mastra's raw event stream to rendered React state.
 - [watchdog-regression-detection.md](watchdog-regression-detection.md) —
